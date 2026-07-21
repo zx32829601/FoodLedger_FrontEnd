@@ -33,6 +33,52 @@ FoodLedger 的跨平台前端，使用 Flutter 建立 Web、Android 與 iOS 共�
 - .NET Aspire / OpenTelemetry
 - Docker / Docker Compose
 
+## 開發環境
+
+- Flutter 3.44.7（Stable channel）
+- Dart 3.12.2
+- Chrome 或 Edge：執行 Flutter Web
+- Android Studio、Android SDK 與模擬器：執行 Android
+- macOS 與 Xcode：建置及執行 iOS
+
+確認環境：
+
+```powershell
+flutter --version
+flutter doctor -v
+flutter devices
+```
+
+## 快速開始
+
+安裝套件：
+
+```powershell
+flutter pub get
+```
+
+使用 Chrome 啟動 Web：
+
+```powershell
+flutter run -d chrome
+```
+
+建立 Web release build：
+
+```powershell
+flutter build web
+```
+
+## 品質檢查
+
+```powershell
+dart format --output=none --set-exit-if-changed .
+flutter analyze
+flutter test
+```
+
+完整 Coding Style、測試與 Git 規範請參考 [`AGENTS.md`](AGENTS.md)。
+
 ## 頁面與資訊架構
 
 ```text
@@ -215,4 +261,13 @@ GET    /api/admin/search
 
 ## 專案狀態
 
-目前處於架構規劃與 UI Prototype 準備階段。
+目前處於 Phase 1：前端骨架與 UI Prototype。
+
+- [x] 建立 Flutter Web、Android、iOS 專案骨架
+- [x] 建立最小 FoodLedger Material 3 啟動畫面
+- [x] 建立基礎 Widget Test
+- [ ] 建立 Design Tokens 與完整 Theme
+- [ ] 導入 Riverpod 與 GoRouter
+- [ ] 建立手機／桌面響應式 App Shell
+- [ ] 建立 Mock Repositories
+- [ ] 完成首頁、紀錄、會員與管理後台 Prototype
