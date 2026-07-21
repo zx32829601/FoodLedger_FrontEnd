@@ -49,7 +49,7 @@ flutter doctor -v
 flutter devices
 ```
 
-## 快速開始
+## 本機啟動
 
 安裝套件：
 
@@ -63,10 +63,86 @@ flutter pub get
 flutter run -d chrome
 ```
 
-建立 Web release build：
+也可以指定 Edge：
 
 ```powershell
-flutter build web
+flutter run -d edge
+```
+
+Flutter 啟動後，可在終端機按 `r` Hot Reload、`R` Hot Restart、`q` 結束。
+
+## 建置步驟
+
+### 1. 建置前檢查
+
+```powershell
+flutter pub get
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+```
+
+上述指令全部通過後再建立 release build。
+
+### 2. Web
+
+```powershell
+flutter build web --release
+```
+
+輸出目錄：
+
+```text
+build/web/
+```
+
+`build/web` 是靜態網站產物，可部署到支援 SPA 的 Web Server 或靜態託管服務。正式部署時需讓未知路由回退至 `index.html`。
+
+### 3. Android APK
+
+```powershell
+flutter build apk --release
+```
+
+輸出檔案：
+
+```text
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+### 4. Android App Bundle
+
+Google Play 發布建議使用 App Bundle：
+
+```powershell
+flutter build appbundle --release
+```
+
+輸出檔案：
+
+```text
+build/app/outputs/bundle/release/app-release.aab
+```
+
+正式簽署前，不得將 keystore、密碼或 signing properties commit 到 Git。
+
+### 5. iOS
+
+iOS 僅能在安裝 Xcode 的 macOS 環境建置：
+
+```bash
+flutter build ios --release
+```
+
+上架前需在 Xcode 設定 Signing、Bundle Identifier 與 Provisioning Profile。
+
+### 6. 清除建置快取
+
+遇到套件、平台或建置快取問題時，可重新產生：
+
+```powershell
+flutter clean
+flutter pub get
 ```
 
 ## 品質檢查
@@ -164,6 +240,22 @@ Repository interface
           ↓
        ASP.NET Core API
 ```
+
+## Mock Prototype
+
+目前在後端食物查詢與飲食紀錄 API 完成前，使用記憶體內的 Mock Repository 提供可操作流程：
+
+- 支援登入、註冊、受保護路由與會員登出。
+- 登入可使用任意有效信箱與 8 字元以上密碼；`admin@` 開頭的信箱會建立 Mock 管理員身分。
+- 登入完成後會回到原先想前往的頁面，一般會員無法開啟管理頁面。
+- 內建食物資料與每 100 克營養資訊。
+- 支援依食物名稱、代碼與描述搜尋。
+- 支援選擇餐別、輸入克數並新增紀錄。
+- 支援依日期查詢與刪除自己的紀錄。
+- 依每日紀錄即時計算熱量、蛋白質、脂肪與碳水化合物。
+- 首頁與紀錄頁共用相同 Riverpod 狀態，操作後會同步更新。
+
+Mock 資料只存在記憶體中，重新整理瀏覽器或重新啟動 App 後會回到預設內容。後端 API 完成後，保留 Repository interface，將 Mock 實作替換成 API 實作。
 
 ## 實作順序
 
@@ -266,8 +358,8 @@ GET    /api/admin/search
 - [x] 建立 Flutter Web、Android、iOS 專案骨架
 - [x] 建立最小 FoodLedger Material 3 啟動畫面
 - [x] 建立基礎 Widget Test
-- [ ] 建立 Design Tokens 與完整 Theme
-- [ ] 導入 Riverpod 與 GoRouter
-- [ ] 建立手機／桌面響應式 App Shell
-- [ ] 建立 Mock Repositories
-- [ ] 完成首頁、紀錄、會員與管理後台 Prototype
+- [x] 建立 Design Tokens 與完整 Theme
+- [x] 導入 Riverpod 與 GoRouter
+- [x] 建立手機／桌面響應式 App Shell
+- [x] 建立 Mock Repositories
+- [x] 完成登入、註冊、首頁、紀錄、會員與管理後台 Prototype
