@@ -1,0 +1,12 @@
+name: foodledger-frontend
+
+services:
+  foodledger-web:
+    image: ${FOODLEDGER_WEB_IMAGE:-foodledger-web:local}
+    build:
+      context: .
+      args:
+        FOOD_LEDGER_API_BASE_URL: ${FOOD_LEDGER_API_BASE_URL:?Set FOOD_LEDGER_API_BASE_URL to a browser-reachable API URL}
+    ports:
+      - "${FOODLEDGER_WEB_HTTP_PORT:-8080}:80"
+    restart: unless-stopped

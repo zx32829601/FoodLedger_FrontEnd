@@ -1,17 +1,19 @@
 import '../../../../core/api/api_exception.dart';
 import '../../../../core/api/json_object.dart';
 import '../../../../core/auth/auth_token_store.dart';
+import 'current_user_response_dto.dart';
 
-/// ASP.NET Core Identity `/login` 與 `/refresh` 的 Token 回應。
-class AccessTokenResponseDto {
-  const AccessTokenResponseDto({
+/// FoodLedger 自訂註冊與登入 API 回傳的 Token 與使用者資料。
+class AuthResponseDto {
+  const AuthResponseDto({
     required this.tokenType,
     required this.accessToken,
     required this.expiresIn,
     required this.refreshToken,
+    required this.user,
   });
 
-  factory AccessTokenResponseDto.fromJson(Object? value) {
+  factory AuthResponseDto.fromJson(Object? value) {
     final json = requireJsonObject(value);
     final accessToken = json['accessToken'];
     final refreshToken = json['refreshToken'];
@@ -22,13 +24,14 @@ class AccessTokenResponseDto {
       throw const ApiException(message: '登入 Token 回應格式不正確');
     }
 
-    return AccessTokenResponseDto(
+    return AuthResponseDto(
       tokenType: json['tokenType'] is String
           ? json['tokenType']! as String
           : 'Bearer',
       accessToken: accessToken,
       expiresIn: expiresIn.toInt(),
       refreshToken: refreshToken,
+      user: CurrentUserResponseDto.fromJson(json['user']),
     );
   }
 
@@ -36,8 +39,9 @@ class AccessTokenResponseDto {
   final String accessToken;
   final int expiresIn;
   final String refreshToken;
+  final CurrentUserResponseDto user;
 
-  AuthTokens toDomain({DateTime? issuedAt}) {
+  AuthTokens toTokens({DateTime? issuedAt}) {
     final issuedAtUtc = (issuedAt ?? DateTime.now()).toUtc();
     return AuthTokens(
       tokenType: tokenType,
