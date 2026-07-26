@@ -16,4 +16,6 @@ abstract interface class AuthApi {
   });
 
   Future<CurrentUserResponseDto> getCurrentUser();
+
+  Future<void> signOut();
 }

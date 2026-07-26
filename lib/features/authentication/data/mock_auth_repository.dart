@@ -65,7 +65,10 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
-  void signOut() {}
+  Future<AppUser?> restoreSession() async => null;
+
+  @override
+  Future<void> signOut() async {}
 
   AppUser _createUser({
     required String userAccount,

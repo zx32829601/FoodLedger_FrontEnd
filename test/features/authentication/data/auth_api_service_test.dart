@@ -71,6 +71,52 @@ void main() {
         'password': 'Password1',
       });
     });
+
+    test('Web 登入會使用 Cookie 模式並在狀態變更前後更新 Antiforgery Token', () async {
+      final recordedRequests = <RequestOptions>[];
+      final dio = Dio(BaseOptions(baseUrl: 'https://localhost'));
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            recordedRequests.add(options);
+            if (options.path == '/api/auth/antiforgery') {
+              handler.resolve(
+                Response<Object?>(
+                  requestOptions: options,
+                  statusCode: 200,
+                  data: {'requestToken': 'csrf-${recordedRequests.length}'},
+                ),
+              );
+              return;
+            }
+
+            handler.resolve(
+              Response<Object?>(
+                requestOptions: options,
+                statusCode: 200,
+                data: _cookieAuthResponseJson(),
+              ),
+            );
+          },
+        ),
+      );
+      addTearDown(dio.close);
+      final service = AuthApiService(dio, useCookies: true);
+
+      final response = await service.signIn(
+        loginId: 'food_user',
+        password: 'Password1',
+      );
+
+      expect(recordedRequests, hasLength(3));
+      expect(recordedRequests[0].path, '/api/auth/antiforgery');
+      expect(recordedRequests[1].path, '/api/auth/login');
+      expect(recordedRequests[1].queryParameters['useCookies'], isTrue);
+      expect(recordedRequests[1].headers['X-CSRF-TOKEN'], 'csrf-1');
+      expect(recordedRequests[2].path, '/api/auth/antiforgery');
+      expect(response.accessToken, isNull);
+      expect(response.user.userAccount, 'food_user');
+    });
   });
 }
 
@@ -79,6 +125,17 @@ Map<String, Object?> _authResponseJson() {
     'accessToken': 'test-access-token',
     'refreshToken': 'test-refresh-token',
     'expiresIn': 3600,
+    'user': {
+      'userId': 42,
+      'userAccount': 'food_user',
+      'displayName': 'Food 使用者',
+      'email': 'user@example.com',
+    },
+  };
+}
+
+Map<String, Object?> _cookieAuthResponseJson() {
+  return {
     'user': {
       'userId': 42,
       'userAccount': 'food_user',

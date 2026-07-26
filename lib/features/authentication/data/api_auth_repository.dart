@@ -51,12 +51,35 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
-  void signOut() {
-    _tokenStore.clear();
+  Future<AppUser?> restoreSession() async {
+    try {
+      final response = await _authApi.getCurrentUser();
+      return response.toDomain();
+    } on ApiException catch (error) {
+      _tokenStore.clear();
+      if (error.statusCode == 401) {
+        return null;
+      }
+      throw _toAuthException(error);
+    }
+  }
+
+  @override
+  Future<void> signOut() async {
+    try {
+      await _authApi.signOut();
+    } finally {
+      _tokenStore.clear();
+    }
   }
 
   AppUser _saveSession(AuthResponseDto response) {
-    _tokenStore.save(response.toTokens());
+    final tokens = response.toTokens();
+    if (tokens != null) {
+      _tokenStore.save(tokens);
+    } else {
+      _tokenStore.clear();
+    }
     return response.user.toDomain();
   }
 
