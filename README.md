@@ -85,7 +85,7 @@ Flutter 啟動後，可在終端機按 `r` Hot Reload、`R` Hot Restart、`q` �
 
 ```powershell
 flutter pub get
-dart format --output=none --set-exit-if-changed lib test
+dart format --output=none --set-exit-if-changed .
 flutter analyze
 flutter test
 ```
@@ -106,7 +106,33 @@ build/web/
 
 `build/web` 是靜態網站產物，可部署到支援 SPA 的 Web Server 或靜態託管服務。正式部署時需讓未知路由回退至 `index.html`。
 
-### 3. Android APK
+### 3. Docker / Docker Compose
+
+先建立本機環境設定：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+`.env` 的 `FOOD_LEDGER_API_BASE_URL` 必須是使用者瀏覽器可直接連線的 API URL。若要讓同一個 Wi-Fi 的其他電腦使用，不能填 `localhost`，例如：
+
+```dotenv
+FOOD_LEDGER_API_BASE_URL=http://192.168.0.177:5062
+FOODLEDGER_WEB_HTTP_PORT=8080
+FOODLEDGER_WEB_IMAGE=foodledger-web:local
+```
+
+建置並啟動 Nginx 容器：
+
+```powershell
+.\scripts\deploy-local.ps1
+```
+
+網站預設位於 `http://localhost:8080`。Nginx 已設定 Flutter Web SPA 路由回退與 `/health` 健康檢查。
+
+`FOOD_LEDGER_API_BASE_URL` 會在 Docker build 時寫入 Web 產物；修改後必須重新 build，只有重啟容器不會生效。
+
+### 4. Android APK
 
 ```powershell
 flutter build apk --release
@@ -118,7 +144,7 @@ flutter build apk --release
 build/app/outputs/flutter-apk/app-release.apk
 ```
 
-### 4. Android App Bundle
+### 5. Android App Bundle
 
 Google Play 發布建議使用 App Bundle：
 
@@ -134,7 +160,7 @@ build/app/outputs/bundle/release/app-release.aab
 
 正式簽署前，不得將 keystore、密碼或 signing properties commit 到 Git。
 
-### 5. iOS
+### 6. iOS
 
 iOS 僅能在安裝 Xcode 的 macOS 環境建置：
 
@@ -144,7 +170,7 @@ flutter build ios --release
 
 上架前需在 Xcode 設定 Signing、Bundle Identifier 與 Provisioning Profile。
 
-### 6. 清除建置快取
+### 7. 清除建置快取
 
 遇到套件、平台或建置快取問題時，可重新產生：
 
@@ -162,6 +188,25 @@ flutter test
 ```
 
 完整 Coding Style、測試與 Git 規範請參考 [`AGENTS.md`](AGENTS.md)。
+
+## CI/CD
+
+GitHub Actions 的 [`.github/workflows/flutter-web-ci.yml`](.github/workflows/flutter-web-ci.yml) 會在 `main` 的 push 與 pull request 執行：
+
+1. `dart format` 格式檢查。
+2. `flutter analyze` 靜態分析。
+3. `flutter test` 自動化測試。
+4. Flutter Web release build。
+5. Production Docker image build。
+
+Jenkins 會依 `Jenkinsfile` 輪詢 Git，驗證 Compose、建立 Docker image，並在 `RUN_LOCAL_DEPLOY=true` 時部署到 Jenkins 主機。若網站要提供區網其他裝置使用，Jenkins 參數應設定為：
+
+```text
+FOOD_LEDGER_API_BASE_URL=http://<Jenkins 主機的區網 IP>:5062
+FOODLEDGER_WEB_HTTP_PORT=8080
+```
+
+後端也必須在 Production 設定完全相同的前端 Origin，例如 `http://<Jenkins 主機的區網 IP>:8080`；協定、主機與連接埠任一不同都視為不同 Origin。
 
 ## 頁面與資訊架構
 
