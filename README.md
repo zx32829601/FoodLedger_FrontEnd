@@ -1,6 +1,6 @@
 # FoodLedger Frontend
 
-FoodLedger 的跨平台前端，使用 Flutter 建立 Web、Android 與 iOS 共用介面。專案目前先以可操作的 UI Prototype 與 Mock Repository 推進，後續透過 OpenAPI 契約串接 ASP.NET Core 後端。
+FoodLedger 的跨平台前端，使用 Flutter 建立 Web、Android 與 iOS 共用介面。登入與註冊已有初版 ASP.NET Core Identity 串接，下一步將依後端已確認的 FoodLedger 自訂 Auth 契約遷移；尚未完成後端 API 的頁面由 Mock Repository 維持可操作 Prototype。
 
 ## 專案目標
 
@@ -60,14 +60,22 @@ flutter pub get
 使用 Chrome 啟動 Web：
 
 ```powershell
-flutter run -d chrome
+flutter run -d chrome --dart-define=FOOD_LEDGER_API_BASE_URL=http://localhost:5062
 ```
 
 也可以指定 Edge：
 
 ```powershell
-flutter run -d edge
+flutter run -d edge --dart-define=FOOD_LEDGER_API_BASE_URL=http://localhost:5062
 ```
+
+Android Emulator 連線本機後端時，需將 API host 改為 `10.0.2.2`：
+
+```powershell
+flutter run -d emulator-5554 --dart-define=FOOD_LEDGER_API_BASE_URL=http://10.0.2.2:5062
+```
+
+若未提供 `FOOD_LEDGER_API_BASE_URL`，開發環境預設使用 `http://localhost:5062`。Flutter Web 與 API 使用不同 origin 時，後端必須允許前端開發網址的 CORS request。
 
 Flutter 啟動後，可在終端機按 `r` Hot Reload、`R` Hot Restart、`q` 結束。
 
@@ -87,7 +95,7 @@ flutter test
 ### 2. Web
 
 ```powershell
-flutter build web --release
+flutter build web --release --dart-define=FOOD_LEDGER_API_BASE_URL=http://localhost:5062
 ```
 
 輸出目錄：
@@ -241,13 +249,18 @@ Repository interface
        ASP.NET Core API
 ```
 
-## Mock Prototype
+## API 串接與 Mock Prototype
 
-目前在後端食物查詢與飲食紀錄 API 完成前，使用記憶體內的 Mock Repository 提供可操作流程：
+後端已確認 Auth、統一錯誤、DefinedCode、DailyRecord 與 Nutrition Summary 契約。完整前端對接規則、DTO 欄位與目前待遷移項目請參考：
 
-- 支援登入、註冊、受保護路由與會員登出。
-- 登入可使用任意有效信箱與 8 字元以上密碼；`admin@` 開頭的信箱會建立 Mock 管理員身分。
-- 登入完成後會回到原先想前往的頁面，一般會員無法開啟管理頁面。
+- [`docs/specs/backend_api_contract_index.md`](docs/specs/backend_api_contract_index.md)
+
+目前前端 Auth 程式仍使用 Identity 內建端點，尚未遷移至已確認的 FoodLedger 自訂 Auth API。後續實作必須改用 `/api/auth/register`、`/api/auth/login` 與 `/api/users/me`，不可再把 `/register`、`/login` 或 `/manage/info` 視為正式契約。
+
+Token 目前只保存在應用程式記憶體，不寫入 Flutter Web 持久儲存；完整 Refresh Token 流程仍等待後端規格確認。
+
+目前在後端食物查詢、飲食紀錄查詢與營養統計 API 完成前，以下功能仍使用記憶體內的 Mock Repository：
+
 - 內建食物資料與每 100 克營養資訊。
 - 支援依食物名稱、代碼與描述搜尋。
 - 支援選擇餐別、輸入克數並新增紀錄。
@@ -255,7 +268,7 @@ Repository interface
 - 依每日紀錄即時計算熱量、蛋白質、脂肪與碳水化合物。
 - 首頁與紀錄頁共用相同 Riverpod 狀態，操作後會同步更新。
 
-Mock 資料只存在記憶體中，重新整理瀏覽器或重新啟動 App 後會回到預設內容。後端 API 完成後，保留 Repository interface，將 Mock 實作替換成 API 實作。
+Mock 飲食資料只存在記憶體中，重新整理瀏覽器或重新啟動 App 後會回到預設內容。後端 API 完成後，保留 Repository interface，將 Mock 實作替換成 API 實作。
 
 ## 實作順序
 
@@ -306,31 +319,25 @@ Mock 資料只存在記憶體中，重新整理瀏覽器或重新啟動 App 後�
 5. Structured Logs、Traces、Metrics 與 Trace ID。
 6. 實際需求成立後再導入 Elasticsearch / Kibana。
 
-## 預計 API 契約
+## 已確認的主要 API 契約
 
 ```http
+POST   /api/auth/register
+POST   /api/auth/login
 GET    /api/users/me
-PUT    /api/users/me/profile
 
-GET    /api/foods
-GET    /api/foods/{id}
+GET    /api/defined-codes/meal-types
 
-GET    /api/daily-records?date=2026-07-21
+GET    /api/daily-records?date=2026-07-26
 POST   /api/daily-records
-PUT    /api/daily-records/{id}
-DELETE /api/daily-records/{id}
+PUT    /api/daily-records/{recordId}
+DELETE /api/daily-records/{recordId}
 
-GET    /api/nutrition/daily?date=2026-07-21
-GET    /api/nutrition/trends?from=...&to=...
-
-GET    /api/admin/dashboard
-GET    /api/admin/users
-GET    /api/admin/foods
-GET    /api/admin/audit-logs
-GET    /api/admin/search
+GET    /api/nutrition-summary/daily?date=2026-07-26
+GET    /api/nutrition-summary/weekly?date=2026-07-26
 ```
 
-所有列表 API 應採一致的分頁、排序與篩選格式；錯誤回應使用 Problem Details 並包含可供追查的 `traceId`。
+錯誤回應採 code-first 契約，前端以 `code` 對應文案、保留 `traceId` 供後端追查，並針對 validation error 保存欄位層級錯誤集合。
 
 ## 測試策略
 
