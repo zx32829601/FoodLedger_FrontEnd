@@ -6,6 +6,7 @@ import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_breakpoints.dart';
 import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
+import '../../../core/widgets/app_brand_banner.dart';
 import 'providers/auth_providers.dart';
 
 class AuthenticationPage extends ConsumerStatefulWidget {
@@ -19,7 +20,6 @@ class AuthenticationPage extends ConsumerStatefulWidget {
 
 class _AuthenticationPageState extends ConsumerState<AuthenticationPage> {
   final _formKey = GlobalKey<FormState>();
-  final _displayNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -27,7 +27,6 @@ class _AuthenticationPageState extends ConsumerState<AuthenticationPage> {
 
   @override
   void dispose() {
-    _displayNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -42,7 +41,6 @@ class _AuthenticationPageState extends ConsumerState<AuthenticationPage> {
     final controller = ref.read(authenticationProvider.notifier);
     if (widget.isRegister) {
       await controller.register(
-        displayName: _displayNameController.text,
         email: _emailController.text,
         password: _passwordController.text,
       );
@@ -79,6 +77,7 @@ class _AuthenticationPageState extends ConsumerState<AuthenticationPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      appBar: const AppBrandBanner(),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -97,8 +96,6 @@ class _AuthenticationPageState extends ConsumerState<AuthenticationPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const _BrandHeader(),
-                        const SizedBox(height: AppSpacing.extraLarge),
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(
@@ -123,22 +120,6 @@ class _AuthenticationPageState extends ConsumerState<AuthenticationPage> {
                                     style: theme.textTheme.bodyLarge,
                                   ),
                                   const SizedBox(height: AppSpacing.large),
-                                  if (widget.isRegister) ...[
-                                    TextFormField(
-                                      key: const Key('display-name-field'),
-                                      controller: _displayNameController,
-                                      enabled: !authState.isAuthenticating,
-                                      autovalidateMode: AutovalidateMode
-                                          .onUserInteractionIfError,
-                                      textInputAction: TextInputAction.next,
-                                      decoration: const InputDecoration(
-                                        labelText: '顯示名稱',
-                                        prefixIcon: Icon(Icons.badge_outlined),
-                                      ),
-                                      validator: _validateDisplayName,
-                                    ),
-                                    const SizedBox(height: AppSpacing.medium),
-                                  ],
                                   TextFormField(
                                     key: const Key('auth-email-field'),
                                     controller: _emailController,
@@ -175,6 +156,9 @@ class _AuthenticationPageState extends ConsumerState<AuthenticationPage> {
                                         : (_) => _submit(),
                                     decoration: InputDecoration(
                                       labelText: '密碼',
+                                      helperText: widget.isRegister
+                                          ? '至少 8 個字元，須包含英文大小寫與數字'
+                                          : null,
                                       prefixIcon: const Icon(
                                         Icons.lock_outline,
                                       ),
@@ -275,13 +259,6 @@ class _AuthenticationPageState extends ConsumerState<AuthenticationPage> {
     );
   }
 
-  String? _validateDisplayName(String? value) {
-    if (value == null || value.trim().length < 2) {
-      return '請輸入至少 2 個字元的顯示名稱';
-    }
-    return null;
-  }
-
   String? _validateEmail(String? value) {
     final email = value?.trim() ?? '';
     final atIndex = email.indexOf('@');
@@ -297,6 +274,11 @@ class _AuthenticationPageState extends ConsumerState<AuthenticationPage> {
     if (value == null || value.length < 8) {
       return '密碼至少需要 8 個字元';
     }
+    if (!RegExp('[A-Z]').hasMatch(value) ||
+        !RegExp('[a-z]').hasMatch(value) ||
+        !RegExp('[0-9]').hasMatch(value)) {
+      return '密碼需包含英文大小寫與數字';
+    }
     return null;
   }
 
@@ -305,29 +287,6 @@ class _AuthenticationPageState extends ConsumerState<AuthenticationPage> {
       return '兩次輸入的密碼不一致';
     }
     return null;
-  }
-}
-
-class _BrandHeader extends StatelessWidget {
-  const _BrandHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.restaurant_menu, color: theme.colorScheme.primary, size: 32),
-        const SizedBox(width: AppSpacing.small),
-        Text(
-          'FoodLedger',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            color: theme.colorScheme.primary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -370,8 +329,8 @@ class _PrototypeNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Text(
-      'Prototype 模式：可使用任意有效信箱與 8 字元以上密碼。'
-      '以 admin@ 開頭的信箱可預覽管理頁面。',
+      '目前連線 ASP.NET Core Identity API。'
+      'API 位址可透過 FOOD_LEDGER_API_BASE_URL 設定。',
       textAlign: TextAlign.center,
       style: theme.textTheme.bodySmall?.copyWith(
         color: theme.colorScheme.onSurfaceVariant,

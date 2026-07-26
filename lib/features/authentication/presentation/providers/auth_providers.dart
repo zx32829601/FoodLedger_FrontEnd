@@ -1,11 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/mock_auth_repository.dart';
+import '../../../../core/api/api_client.dart';
+import '../../../../core/auth/auth_token_store.dart';
+import '../../data/api_auth_repository.dart';
+import '../../data/auth_api.dart';
+import '../../data/auth_api_service.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/repositories/auth_repository.dart';
 
+final authTokenStoreProvider = Provider<AuthTokenStore>((ref) {
+  return AuthTokenStore();
+});
+
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final client = ApiClient(tokenStore: ref.watch(authTokenStoreProvider));
+  ref.onDispose(client.close);
+  return client;
+});
+
+final authApiProvider = Provider<AuthApi>((ref) {
+  return AuthApiService(ref.watch(apiClientProvider).dio);
+});
+
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return MockAuthRepository();
+  return ApiAuthRepository(
+    ref.watch(authApiProvider),
+    ref.watch(authTokenStoreProvider),
+  );
 });
 
 /// 預留給未來從 Cookie 或安全儲存還原登入狀態，也方便測試注入。
@@ -72,7 +93,6 @@ class AuthenticationController extends Notifier<AuthenticationState> {
   }
 
   Future<bool> register({
-    required String displayName,
     required String email,
     required String password,
   }) async {
@@ -80,7 +100,7 @@ class AuthenticationController extends Notifier<AuthenticationState> {
     try {
       final user = await ref
           .read(authRepositoryProvider)
-          .register(displayName: displayName, email: email, password: password);
+          .register(email: email, password: password);
       state = AuthenticationState.authenticated(user);
       return true;
     } on AuthException catch (error) {
@@ -101,6 +121,7 @@ class AuthenticationController extends Notifier<AuthenticationState> {
   }
 
   void signOut() {
+    ref.read(authRepositoryProvider).signOut();
     state = const AuthenticationState.unauthenticated();
   }
 }

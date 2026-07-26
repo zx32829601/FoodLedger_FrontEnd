@@ -6,6 +6,7 @@ import '../domain/models/daily_record.dart';
 import '../domain/models/meal_type.dart';
 import 'providers/record_providers.dart';
 import 'widgets/add_record_dialog.dart';
+import 'widgets/daily_record_bar.dart';
 import 'widgets/nutrition_summary_card.dart';
 
 class RecordsPage extends ConsumerWidget {
@@ -251,40 +252,31 @@ class _MealSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.medium),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              mealType.label,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: AppSpacing.small),
-            for (final record in records)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  child: Text(record.food.name.characters.first),
-                ),
-                title: Text(record.food.name),
-                subtitle: Text(
-                  '${record.quantityGrams.toStringAsFixed(0)} 克 ・ '
-                  '${record.nutrition.calories.toStringAsFixed(0)} kcal',
-                ),
-                trailing: IconButton(
-                  key: Key('delete-record-${record.id}'),
-                  tooltip: '刪除 ${record.food.name}',
-                  onPressed: () => onDelete(record.id),
-                  icon: const Icon(Icons.delete_outline),
-                ),
-              ),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          mealType.label,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
-      ),
+        const SizedBox(height: AppSpacing.small),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: records.length,
+          itemBuilder: (context, index) {
+            final record = records[index];
+            return DailyRecordBar(
+              record: record,
+              onDelete: () => onDelete(record.id),
+            );
+          },
+          separatorBuilder: (context, index) =>
+              const SizedBox(height: AppSpacing.small),
+        ),
+      ],
     );
   }
 }

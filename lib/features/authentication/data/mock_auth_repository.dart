@@ -24,21 +24,23 @@ class MockAuthRepository implements AuthRepository {
 
   @override
   Future<AppUser> register({
-    required String displayName,
     required String email,
     required String password,
   }) async {
     await Future<void>.delayed(_requestDelay);
     final normalizedEmail = email.trim().toLowerCase();
-    final normalizedName = displayName.trim();
-    if (normalizedName.length < 2 ||
-        !_isValidEmail(normalizedEmail) ||
-        password.length < 8) {
+    if (!_isValidEmail(normalizedEmail) || password.length < 8) {
       throw const AuthException('註冊資料格式不正確，請重新確認');
     }
 
-    return _createUser(email: normalizedEmail, displayName: normalizedName);
+    return _createUser(
+      email: normalizedEmail,
+      displayName: _displayNameFromEmail(normalizedEmail),
+    );
   }
+
+  @override
+  void signOut() {}
 
   AppUser _createUser({required String email, required String displayName}) {
     return AppUser(
