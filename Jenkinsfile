@@ -23,7 +23,7 @@ pipeline {
         )
         string(
             name: 'FOODLEDGER_WEB_HTTP_PORT',
-            defaultValue: '8080',
+            defaultValue: '8180',
             description: '前端容器對 Jenkins 主機公開的 HTTP 連接埠。'
         )
         string(
