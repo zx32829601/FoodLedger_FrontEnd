@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_ledger_frontend/app/app.dart';
+import 'package:food_ledger_frontend/app/theme/theme_preference_store.dart';
 import 'package:food_ledger_frontend/core/widgets/app_brand_banner.dart';
 import 'package:food_ledger_frontend/features/authentication/data/mock_auth_repository.dart';
 import 'package:food_ledger_frontend/features/authentication/domain/models/app_user.dart';
@@ -40,6 +41,9 @@ void main() {
       ProviderScope(
         overrides: [
           initialAuthUserProvider.overrideWithValue(initialUser),
+          themePreferenceStoreProvider.overrideWithValue(
+            _MemoryThemePreferenceStore(),
+          ),
           authRepositoryProvider.overrideWithValue(
             authRepository ?? MockAuthRepository(),
           ),
@@ -416,5 +420,20 @@ class _DuplicateUserAccountRepository implements AuthRepository {
   }
 
   @override
-  void signOut() {}
+  Future<AppUser?> restoreSession() async => null;
+
+  @override
+  Future<void> signOut() async {}
+}
+
+class _MemoryThemePreferenceStore implements ThemePreferenceStore {
+  ThemeMode mode = ThemeMode.light;
+
+  @override
+  Future<ThemeMode> load() async => mode;
+
+  @override
+  Future<void> save(ThemeMode mode) async {
+    this.mode = mode;
+  }
 }

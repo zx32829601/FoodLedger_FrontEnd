@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/api/api_client.dart';
@@ -22,7 +25,8 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     shouldNotifyUnauthorized: (request) {
       final path = request.uri.path;
       return path != AuthApiService.loginPath &&
-          path != AuthApiService.registerPath;
+          path != AuthApiService.registerPath &&
+          path != AuthApiService.currentUserPath;
     },
   );
   ref.onDispose(client.close);
@@ -42,6 +46,9 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 /// 預留給未來從 Cookie 或安全儲存還原登入狀態，也方便測試注入。
 final initialAuthUserProvider = Provider<AppUser?>((ref) => null);
+
+/// Flutter Web 啟動時透過 HttpOnly Cookie 還原 Session；行動端保留未來安全儲存流程。
+final restoreSessionOnStartProvider = Provider<bool>((ref) => kIsWeb);
 
 enum AuthenticationStatus { unauthenticated, authenticating, authenticated }
 
@@ -90,9 +97,13 @@ class AuthenticationController extends Notifier<AuthenticationState> {
   @override
   AuthenticationState build() {
     final initialUser = ref.watch(initialAuthUserProvider);
-    return initialUser == null
-        ? const AuthenticationState.unauthenticated()
-        : AuthenticationState.authenticated(initialUser);
+    if (initialUser != null) {
+      return AuthenticationState.authenticated(initialUser);
+    }
+    if (ref.watch(restoreSessionOnStartProvider)) {
+      unawaited(Future<void>.microtask(_restoreSession));
+    }
+    return const AuthenticationState.unauthenticated();
   }
 
   Future<bool> signIn({required String loginId, required String password}) {
@@ -160,16 +171,27 @@ class AuthenticationController extends Notifier<AuthenticationState> {
     }
   }
 
-  void signOut() {
-    ref.read(authRepositoryProvider).signOut();
+  Future<void> signOut() async {
+    await ref.read(authRepositoryProvider).signOut();
     state = const AuthenticationState.unauthenticated();
   }
 
   void handleUnauthorized() {
-    ref.read(authRepositoryProvider).signOut();
+    unawaited(ref.read(authRepositoryProvider).signOut());
     state = const AuthenticationState.unauthenticated(
       errorMessage: AuthStrings.sessionExpired,
     );
+  }
+
+  Future<void> _restoreSession() async {
+    try {
+      final user = await ref.read(authRepositoryProvider).restoreSession();
+      if (user != null) {
+        state = AuthenticationState.authenticated(user);
+      }
+    } on AuthException {
+      state = const AuthenticationState.unauthenticated();
+    }
   }
 }
 

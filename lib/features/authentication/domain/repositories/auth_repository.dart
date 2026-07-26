@@ -11,7 +11,9 @@ abstract interface class AuthRepository {
     required String password,
   });
 
-  void signOut();
+  Future<AppUser?> restoreSession();
+
+  Future<void> signOut();
 }
 
 /// 可安全呈現在驗證介面的預期錯誤。

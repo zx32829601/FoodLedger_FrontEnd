@@ -9,6 +9,16 @@ import 'package:food_ledger_frontend/features/authentication/domain/repositories
 
 void main() {
   group('ApiAuthRepository', () {
+    test('既有 Cookie Session 有效時可從目前使用者 API 還原登入者', () async {
+      final authApi = _FakeAuthApi();
+      final repository = ApiAuthRepository(authApi, AuthTokenStore());
+
+      final user = await repository.restoreSession();
+
+      expect(user?.userAccount, 'member_account');
+      expect(user?.displayName, '測試會員');
+    });
+
     test('登入成功時保存 Token 並組合目前使用者資料', () async {
       final authApi = _FakeAuthApi();
       final tokenStore = AuthTokenStore();
@@ -155,6 +165,9 @@ class _FakeAuthApi implements AuthApi {
       email: 'member@example.com',
     );
   }
+
+  @override
+  Future<void> signOut() async {}
 
   @override
   Future<AuthResponseDto> register({

@@ -38,7 +38,7 @@ void main() {
       expect(succeeded, isTrue);
       expect(container.read(authenticationProvider).user?.isAdmin, isTrue);
 
-      container.read(authenticationProvider.notifier).signOut();
+      await container.read(authenticationProvider.notifier).signOut();
 
       expect(
         container.read(authenticationProvider).status,
@@ -134,7 +134,10 @@ class _FailingAuthRepository implements AuthRepository {
   }
 
   @override
-  void signOut() {}
+  Future<AppUser?> restoreSession() async => null;
+
+  @override
+  Future<void> signOut() async {}
 }
 
 class _SignOutRecordingAuthRepository implements AuthRepository {
@@ -159,7 +162,10 @@ class _SignOutRecordingAuthRepository implements AuthRepository {
   }
 
   @override
-  void signOut() {
+  Future<AppUser?> restoreSession() async => null;
+
+  @override
+  Future<void> signOut() async {
     signOutCallCount += 1;
     _tokenStore.clear();
   }
