@@ -6,6 +6,7 @@ import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../records/domain/models/daily_record.dart';
 import '../../records/presentation/providers/record_providers.dart';
+import '../../records/presentation/widgets/daily_record_bar.dart';
 import '../../records/presentation/widgets/nutrition_summary_card.dart';
 
 class HomePage extends ConsumerWidget {
@@ -113,30 +114,15 @@ class _TodayRecords extends StatelessWidget {
       );
     }
 
-    final recentRecords = records.reversed.take(3);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.medium),
-        child: Column(
-          children: [
-            for (final record in recentRecords)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const CircleAvatar(
-                  child: Icon(Icons.restaurant_outlined),
-                ),
-                title: Text(record.food.name),
-                subtitle: Text(
-                  '${record.mealType.label} ・ '
-                  '${record.quantityGrams.toStringAsFixed(0)} 克',
-                ),
-                trailing: Text(
-                  '${record.nutrition.calories.toStringAsFixed(0)} kcal',
-                ),
-              ),
-          ],
-        ),
-      ),
+    final recentRecords = records.reversed.take(3).toList(growable: false);
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: recentRecords.length,
+      itemBuilder: (context, index) =>
+          DailyRecordBar(record: recentRecords[index], showMealType: true),
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: AppSpacing.small),
     );
   }
 }

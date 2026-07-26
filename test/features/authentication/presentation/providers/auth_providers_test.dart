@@ -1,11 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:food_ledger_frontend/features/authentication/data/mock_auth_repository.dart';
 import 'package:food_ledger_frontend/features/authentication/presentation/providers/auth_providers.dart';
 
 void main() {
   group('AuthenticationController', () {
     test('初始狀態為未登入', () {
-      final container = ProviderContainer();
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(MockAuthRepository()),
+        ],
+      );
       addTearDown(container.dispose);
 
       final state = container.read(authenticationProvider);
@@ -15,9 +20,13 @@ void main() {
     });
 
     test('登入後建立 Session 並可登出', () async {
-      final container = ProviderContainer();
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(MockAuthRepository()),
+        ],
+      );
       addTearDown(container.dispose);
-      final validPassword = List.filled(8, 'x').join();
+      final validPassword = ['A', 'a', ...List.filled(6, '1')].join();
 
       final succeeded = await container
           .read(authenticationProvider.notifier)

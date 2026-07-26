@@ -38,6 +38,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^3.3.2
   go_router: ^17.3.0
+  dio: ^5.10.0
 
 dev_dependencies:
   flutter_test:
@@ -60,6 +61,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/branding/foodledger-banner-logo.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

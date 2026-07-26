@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/app_brand_banner.dart';
 import '../../features/authentication/presentation/providers/auth_providers.dart';
 import '../theme/app_breakpoints.dart';
 import '../theme/app_spacing.dart';
 import 'app_destination.dart';
+import 'sliding_navigation_bar.dart';
 
 /// 依畫面寬度切換手機底部導覽與桌面側邊導覽。
 class AppShell extends ConsumerWidget {
@@ -33,18 +35,17 @@ class AppShell extends ConsumerWidget {
       builder: (context, constraints) {
         if (constraints.maxWidth < AppBreakpoints.expanded) {
           return Scaffold(
-            body: navigationShell,
-            bottomNavigationBar: NavigationBar(
+            appBar: const AppBrandBanner(),
+            body: ClipRect(
+              child: _SlidingNavigationBody(
+                selectedIndex: navigationShell.currentIndex,
+                child: navigationShell,
+              ),
+            ),
+            bottomNavigationBar: SlidingNavigationBar(
+              destinations: destinations,
               selectedIndex: navigationShell.currentIndex,
               onDestinationSelected: _selectDestination,
-              destinations: [
-                for (final destination in destinations)
-                  NavigationDestination(
-                    icon: Icon(destination.icon),
-                    selectedIcon: Icon(destination.selectedIcon),
-                    label: destination.label,
-                  ),
-              ],
             ),
           );
         }
@@ -52,6 +53,7 @@ class AppShell extends ConsumerWidget {
         final isExtended = constraints.maxWidth >= AppBreakpoints.wide;
 
         return Scaffold(
+          appBar: const AppBrandBanner(),
           body: Row(
             children: [
               SafeArea(
@@ -64,10 +66,6 @@ class AppShell extends ConsumerWidget {
                     minExtendedWidth: 216,
                     selectedIndex: navigationShell.currentIndex,
                     onDestinationSelected: _selectDestination,
-                    leading: Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.large),
-                      child: _BrandMark(showLabel: isExtended),
-                    ),
                     destinations: [
                       for (final destination in destinations)
                         NavigationRailDestination(
@@ -89,30 +87,58 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-class _BrandMark extends StatelessWidget {
-  const _BrandMark({required this.showLabel});
+class _SlidingNavigationBody extends StatefulWidget {
+  const _SlidingNavigationBody({
+    required this.selectedIndex,
+    required this.child,
+  });
 
-  final bool showLabel;
+  final int selectedIndex;
+  final Widget child;
+
+  @override
+  State<_SlidingNavigationBody> createState() => _SlidingNavigationBodyState();
+}
+
+class _SlidingNavigationBodyState extends State<_SlidingNavigationBody> {
+  static const _slideDistance = 0.08;
+  static const _animationDuration = Duration(milliseconds: 280);
+
+  Offset _offset = Offset.zero;
+  int _animationRevision = 0;
+
+  @override
+  void didUpdateWidget(covariant _SlidingNavigationBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedIndex == oldWidget.selectedIndex) {
+      return;
+    }
+
+    _offset = Offset(
+      widget.selectedIndex > oldWidget.selectedIndex
+          ? _slideDistance
+          : -_slideDistance,
+      0,
+    );
+    final revision = ++_animationRevision;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || revision != _animationRevision) {
+        return;
+      }
+      setState(() {
+        _offset = Offset.zero;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.restaurant_menu, color: colorScheme.primary),
-        if (showLabel) ...[
-          const SizedBox(width: AppSpacing.small),
-          Text(
-            'FoodLedger',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: colorScheme.primary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ],
+    return AnimatedSlide(
+      key: const Key('navigation-slide-animation'),
+      offset: _offset,
+      duration: _animationDuration,
+      curve: Curves.easeOutCubic,
+      child: widget.child,
     );
   }
 }

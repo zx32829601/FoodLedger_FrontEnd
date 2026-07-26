@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_ledger_frontend/app/app.dart';
+import 'package:food_ledger_frontend/core/widgets/app_brand_banner.dart';
+import 'package:food_ledger_frontend/features/authentication/data/mock_auth_repository.dart';
 import 'package:food_ledger_frontend/features/authentication/domain/models/app_user.dart';
 import 'package:food_ledger_frontend/features/authentication/presentation/providers/auth_providers.dart';
+import 'package:food_ledger_frontend/features/records/presentation/widgets/daily_record_bar.dart';
 
 void main() {
   const memberUser = AppUser(
@@ -31,7 +34,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [initialAuthUserProvider.overrideWithValue(initialUser)],
+        overrides: [
+          initialAuthUserProvider.overrideWithValue(initialUser),
+          authRepositoryProvider.overrideWithValue(MockAuthRepository()),
+        ],
         child: const FoodLedgerApp(),
       ),
     );
@@ -43,6 +49,8 @@ void main() {
 
     expect(find.text('歡迎回來'), findsOneWidget);
     expect(find.byKey(const Key('auth-email-field')), findsOneWidget);
+    expect(find.byType(AppBrandBanner), findsOneWidget);
+    expect(find.byKey(const Key('app-brand-logo')), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
   });
 
@@ -70,7 +78,7 @@ void main() {
     expect(find.text('密碼至少需要 8 個字元'), findsOneWidget);
   });
 
-  testWidgets('密碼出現錯誤後會在輸入達 8 個字元時立即清除', (tester) async {
+  testWidgets('密碼出現錯誤後會在符合後端規則時立即清除', (tester) async {
     await pumpApp(tester, surfaceSize: const Size(390, 844), initialUser: null);
 
     await tester.tap(find.byKey(const Key('auth-submit-button')));
@@ -79,14 +87,14 @@ void main() {
 
     await tester.enterText(
       find.byKey(const Key('auth-password-field')),
-      List.filled(7, 'x').join(),
+      ['A', 'a', ...List.filled(5, '1')].join(),
     );
     await tester.pump();
     expect(find.text('密碼至少需要 8 個字元'), findsOneWidget);
 
     await tester.enterText(
       find.byKey(const Key('auth-password-field')),
-      List.filled(8, 'x').join(),
+      ['A', 'a', ...List.filled(6, '1')].join(),
     );
     await tester.pump();
     expect(find.text('密碼至少需要 8 個字元'), findsNothing);
@@ -94,7 +102,7 @@ void main() {
 
   testWidgets('使用者可以登入並進入首頁', (tester) async {
     await pumpApp(tester, surfaceSize: const Size(390, 844), initialUser: null);
-    final validPassword = List.filled(8, 'x').join();
+    final validPassword = ['A', 'a', ...List.filled(6, '1')].join();
 
     await tester.enterText(
       find.byKey(const Key('auth-email-field')),
@@ -113,11 +121,10 @@ void main() {
 
   testWidgets('使用者可以註冊並直接進入首頁', (tester) async {
     await pumpApp(tester, surfaceSize: const Size(390, 844), initialUser: null);
-    final validPassword = List.filled(8, 'x').join();
+    final validPassword = ['A', 'a', ...List.filled(6, '1')].join();
 
     await tester.tap(find.byKey(const Key('switch-auth-mode-button')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('display-name-field')), '新會員');
     await tester.enterText(
       find.byKey(const Key('auth-email-field')),
       'new.member@example.com',
@@ -141,17 +148,75 @@ void main() {
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationRail), findsNothing);
+    expect(find.byType(AppBrandBanner), findsOneWidget);
+    expect(find.byKey(const Key('app-brand-logo')), findsOneWidget);
     expect(find.text('今天吃得怎麼樣？'), findsOneWidget);
     expect(find.text('今日飲食'), findsOneWidget);
+    expect(find.byType(DailyRecordBar), findsWidgets);
+    final initialIndicatorCenter = tester.getCenter(
+      find.byKey(const Key('navigation-selection-indicator')),
+    );
 
     final recordsDestination = find.descendant(
       of: find.byType(NavigationBar),
       matching: find.text('紀錄'),
     );
     await tester.tap(recordsDestination);
+    await tester.pump();
+
+    final slidingBody = tester.widget<AnimatedSlide>(
+      find.byKey(const Key('navigation-slide-animation')),
+    );
+    expect(slidingBody.offset.dx, greaterThan(0));
+
+    await tester.pump(const Duration(milliseconds: 80));
+    final movingIndicatorCenter = tester.getCenter(
+      find.byKey(const Key('navigation-selection-indicator')),
+    );
+    expect(movingIndicatorCenter.dx, greaterThan(initialIndicatorCenter.dx));
+
     await tester.pumpAndSettle();
+    final finalIndicatorCenter = tester.getCenter(
+      find.byKey(const Key('navigation-selection-indicator')),
+    );
+    expect(finalIndicatorCenter.dx, greaterThan(movingIndicatorCenter.dx));
 
     expect(find.text('飲食紀錄'), findsOneWidget);
+    expect(find.byType(DailyRecordBar), findsWidgets);
+  });
+
+  testWidgets('底部導覽向左切換時選取背景會反向滑動', (tester) async {
+    await pumpApp(tester, surfaceSize: const Size(390, 844));
+
+    final profileDestination = find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('會員'),
+    );
+    await tester.tap(profileDestination);
+    await tester.pumpAndSettle();
+    final profileIndicatorCenter = tester.getCenter(
+      find.byKey(const Key('navigation-selection-indicator')),
+    );
+
+    final homeDestination = find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('首頁'),
+    );
+    await tester.tap(homeDestination);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+
+    final movingIndicatorCenter = tester.getCenter(
+      find.byKey(const Key('navigation-selection-indicator')),
+    );
+    expect(movingIndicatorCenter.dx, lessThan(profileIndicatorCenter.dx));
+
+    await tester.pumpAndSettle();
+    final homeIndicatorCenter = tester.getCenter(
+      find.byKey(const Key('navigation-selection-indicator')),
+    );
+    expect(homeIndicatorCenter.dx, lessThan(movingIndicatorCenter.dx));
+    expect(find.text('今天吃得怎麼樣？'), findsOneWidget);
   });
 
   testWidgets('飲食紀錄可以開啟日曆選擇日期', (tester) async {
@@ -179,6 +244,8 @@ void main() {
 
     expect(find.byType(NavigationRail), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(AppBrandBanner), findsOneWidget);
+    expect(find.byKey(const Key('app-brand-logo')), findsOneWidget);
 
     final adminDestination = find.descendant(
       of: find.byType(NavigationRail),
