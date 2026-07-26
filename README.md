@@ -1,6 +1,6 @@
 # FoodLedger Frontend
 
-FoodLedger 的跨平台前端，使用 Flutter 建立 Web、Android 與 iOS 共用介面。專案目前先以可操作的 UI Prototype 與 Mock Repository 推進，後續透過 OpenAPI 契約串接 ASP.NET Core 後端。
+FoodLedger 的跨平台前端，使用 Flutter 建立 Web、Android 與 iOS 共用介面。登入與註冊已有初版 ASP.NET Core Identity 串接，下一步將依後端已確認的 FoodLedger 自訂 Auth 契約遷移；尚未完成後端 API 的頁面由 Mock Repository 維持可操作 Prototype。
 
 ## 專案目標
 
@@ -32,6 +32,136 @@ FoodLedger 的跨平台前端，使用 Flutter 建立 Web、Android 與 iOS 共�
 - OpenAPI
 - .NET Aspire / OpenTelemetry
 - Docker / Docker Compose
+
+## 開發環境
+
+- Flutter 3.44.7（Stable channel）
+- Dart 3.12.2
+- Chrome 或 Edge：執行 Flutter Web
+- Android Studio、Android SDK 與模擬器：執行 Android
+- macOS 與 Xcode：建置及執行 iOS
+
+確認環境：
+
+```powershell
+flutter --version
+flutter doctor -v
+flutter devices
+```
+
+## 本機啟動
+
+安裝套件：
+
+```powershell
+flutter pub get
+```
+
+使用 Chrome 啟動 Web：
+
+```powershell
+flutter run -d chrome --dart-define=FOOD_LEDGER_API_BASE_URL=http://localhost:5062
+```
+
+也可以指定 Edge：
+
+```powershell
+flutter run -d edge --dart-define=FOOD_LEDGER_API_BASE_URL=http://localhost:5062
+```
+
+Android Emulator 連線本機後端時，需將 API host 改為 `10.0.2.2`：
+
+```powershell
+flutter run -d emulator-5554 --dart-define=FOOD_LEDGER_API_BASE_URL=http://10.0.2.2:5062
+```
+
+若未提供 `FOOD_LEDGER_API_BASE_URL`，開發環境預設使用 `http://localhost:5062`。Flutter Web 與 API 使用不同 origin 時，後端必須允許前端開發網址的 CORS request。
+
+Flutter 啟動後，可在終端機按 `r` Hot Reload、`R` Hot Restart、`q` 結束。
+
+## 建置步驟
+
+### 1. 建置前檢查
+
+```powershell
+flutter pub get
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+```
+
+上述指令全部通過後再建立 release build。
+
+### 2. Web
+
+```powershell
+flutter build web --release --dart-define=FOOD_LEDGER_API_BASE_URL=http://localhost:5062
+```
+
+輸出目錄：
+
+```text
+build/web/
+```
+
+`build/web` 是靜態網站產物，可部署到支援 SPA 的 Web Server 或靜態託管服務。正式部署時需讓未知路由回退至 `index.html`。
+
+### 3. Android APK
+
+```powershell
+flutter build apk --release
+```
+
+輸出檔案：
+
+```text
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+### 4. Android App Bundle
+
+Google Play 發布建議使用 App Bundle：
+
+```powershell
+flutter build appbundle --release
+```
+
+輸出檔案：
+
+```text
+build/app/outputs/bundle/release/app-release.aab
+```
+
+正式簽署前，不得將 keystore、密碼或 signing properties commit 到 Git。
+
+### 5. iOS
+
+iOS 僅能在安裝 Xcode 的 macOS 環境建置：
+
+```bash
+flutter build ios --release
+```
+
+上架前需在 Xcode 設定 Signing、Bundle Identifier 與 Provisioning Profile。
+
+### 6. 清除建置快取
+
+遇到套件、平台或建置快取問題時，可重新產生：
+
+```powershell
+flutter clean
+flutter pub get
+```
+
+## 品質檢查
+
+```powershell
+dart format --output=none --set-exit-if-changed .
+flutter analyze
+flutter test
+```
+
+完整 Coding Style、測試與 Git 規範請參考 [`AGENTS.md`](AGENTS.md)。
 
 ## 頁面與資訊架構
 
@@ -119,6 +249,27 @@ Repository interface
        ASP.NET Core API
 ```
 
+## API 串接與 Mock Prototype
+
+後端已確認 Auth、統一錯誤、DefinedCode、DailyRecord 與 Nutrition Summary 契約。完整前端對接規則、DTO 欄位與目前待遷移項目請參考：
+
+- [`docs/specs/backend_api_contract_index.md`](docs/specs/backend_api_contract_index.md)
+
+目前前端 Auth 程式仍使用 Identity 內建端點，尚未遷移至已確認的 FoodLedger 自訂 Auth API。後續實作必須改用 `/api/auth/register`、`/api/auth/login` 與 `/api/users/me`，不可再把 `/register`、`/login` 或 `/manage/info` 視為正式契約。
+
+Token 目前只保存在應用程式記憶體，不寫入 Flutter Web 持久儲存；完整 Refresh Token 流程仍等待後端規格確認。
+
+目前在後端食物查詢、飲食紀錄查詢與營養統計 API 完成前，以下功能仍使用記憶體內的 Mock Repository：
+
+- 內建食物資料與每 100 克營養資訊。
+- 支援依食物名稱、代碼與描述搜尋。
+- 支援選擇餐別、輸入克數並新增紀錄。
+- 支援依日期查詢與刪除自己的紀錄。
+- 依每日紀錄即時計算熱量、蛋白質、脂肪與碳水化合物。
+- 首頁與紀錄頁共用相同 Riverpod 狀態，操作後會同步更新。
+
+Mock 飲食資料只存在記憶體中，重新整理瀏覽器或重新啟動 App 後會回到預設內容。後端 API 完成後，保留 Repository interface，將 Mock 實作替換成 API 實作。
+
 ## 實作順序
 
 採用「後端核心先行、前後端垂直切片同步開發」，不等待所有後端完成，也不先做完所有靜態頁面。
@@ -168,31 +319,25 @@ Repository interface
 5. Structured Logs、Traces、Metrics 與 Trace ID。
 6. 實際需求成立後再導入 Elasticsearch / Kibana。
 
-## 預計 API 契約
+## 已確認的主要 API 契約
 
 ```http
+POST   /api/auth/register
+POST   /api/auth/login
 GET    /api/users/me
-PUT    /api/users/me/profile
 
-GET    /api/foods
-GET    /api/foods/{id}
+GET    /api/defined-codes/meal-types
 
-GET    /api/daily-records?date=2026-07-21
+GET    /api/daily-records?date=2026-07-26
 POST   /api/daily-records
-PUT    /api/daily-records/{id}
-DELETE /api/daily-records/{id}
+PUT    /api/daily-records/{recordId}
+DELETE /api/daily-records/{recordId}
 
-GET    /api/nutrition/daily?date=2026-07-21
-GET    /api/nutrition/trends?from=...&to=...
-
-GET    /api/admin/dashboard
-GET    /api/admin/users
-GET    /api/admin/foods
-GET    /api/admin/audit-logs
-GET    /api/admin/search
+GET    /api/nutrition-summary/daily?date=2026-07-26
+GET    /api/nutrition-summary/weekly?date=2026-07-26
 ```
 
-所有列表 API 應採一致的分頁、排序與篩選格式；錯誤回應使用 Problem Details 並包含可供追查的 `traceId`。
+錯誤回應採 code-first 契約，前端以 `code` 對應文案、保留 `traceId` 供後端追查，並針對 validation error 保存欄位層級錯誤集合。
 
 ## 測試策略
 
@@ -215,4 +360,13 @@ GET    /api/admin/search
 
 ## 專案狀態
 
-目前處於架構規劃與 UI Prototype 準備階段。
+目前處於 Phase 1：前端骨架與 UI Prototype。
+
+- [x] 建立 Flutter Web、Android、iOS 專案骨架
+- [x] 建立最小 FoodLedger Material 3 啟動畫面
+- [x] 建立基礎 Widget Test
+- [x] 建立 Design Tokens 與完整 Theme
+- [x] 導入 Riverpod 與 GoRouter
+- [x] 建立手機／桌面響應式 App Shell
+- [x] 建立 Mock Repositories
+- [x] 完成登入、註冊、首頁、紀錄、會員與管理後台 Prototype
