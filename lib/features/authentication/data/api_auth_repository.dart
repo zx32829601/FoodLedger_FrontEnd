@@ -3,6 +3,7 @@ import '../../../core/auth/auth_token_store.dart';
 import '../domain/models/app_user.dart';
 import '../domain/repositories/auth_repository.dart';
 import 'auth_api.dart';
+import 'dtos/auth_response_dto.dart';
 
 /// 以 ASP.NET Core Identity API 實作正式身分驗證流程。
 class ApiAuthRepository implements AuthRepository {
@@ -13,33 +14,40 @@ class ApiAuthRepository implements AuthRepository {
 
   @override
   Future<AppUser> signIn({
-    required String email,
+    required String loginId,
     required String password,
   }) async {
     try {
-      final tokenResponse = await _authApi.signIn(
-        email: email.trim(),
+      final response = await _authApi.signIn(
+        loginId: loginId.trim(),
         password: password,
       );
-      _tokenStore.save(tokenResponse.toDomain());
-      return await _loadCurrentUser();
+      return _saveSession(response);
     } on ApiException catch (error) {
       _tokenStore.clear();
-      throw AuthException(error.message);
+      throw _toAuthException(error);
     }
   }
 
   @override
   Future<AppUser> register({
+    required String userAccount,
+    required String displayName,
     required String email,
     required String password,
   }) async {
     try {
-      await _authApi.register(email: email.trim(), password: password);
+      final response = await _authApi.register(
+        userAccount: userAccount.trim(),
+        displayName: displayName.trim(),
+        email: email.trim(),
+        password: password,
+      );
+      return _saveSession(response);
     } on ApiException catch (error) {
-      throw AuthException(error.message);
+      _tokenStore.clear();
+      throw _toAuthException(error);
     }
-    return signIn(email: email, password: password);
   }
 
   @override
@@ -47,23 +55,25 @@ class ApiAuthRepository implements AuthRepository {
     _tokenStore.clear();
   }
 
-  Future<AppUser> _loadCurrentUser() async {
-    final currentUser = await _authApi.getCurrentUser();
-    final identityInfo = await _authApi.getIdentityInfo();
-    if (!currentUser.isAuthenticated) {
-      throw const ApiException(message: '後端未建立有效的登入狀態');
-    }
+  AppUser _saveSession(AuthResponseDto response) {
+    _tokenStore.save(response.toTokens());
+    return response.user.toDomain();
+  }
 
-    final userName = currentUser.userName?.trim();
-    final accountName = identityInfo.email.split('@').first;
-    return AppUser(
-      id: currentUser.userId.toString(),
-      displayName: userName == null || userName.isEmpty
-          ? accountName
-          : userName,
-      email: identityInfo.email,
-      // 現有 API 尚未回傳角色；管理功能必須等後端提供受保護的角色資訊。
-      isAdmin: false,
+  static AuthException _toAuthException(ApiException error) {
+    return AuthException(
+      error.message,
+      code: error.code,
+      fieldErrors: {
+        for (final entry in error.fieldErrors.entries)
+          if (entry.value.isNotEmpty)
+            entry.key: AuthFieldFailure(
+              code: entry.value.first.code,
+              message: entry.value.first.message,
+              parameters: entry.value.first.parameters,
+            ),
+      },
+      traceId: error.traceId,
     );
   }
 }

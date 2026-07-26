@@ -2,62 +2,63 @@ import 'package:dio/dio.dart';
 
 import '../../../core/api/api_exception.dart';
 import 'auth_api.dart';
-import 'dtos/access_token_response_dto.dart';
+import 'dtos/auth_response_dto.dart';
 import 'dtos/current_user_response_dto.dart';
-import 'dtos/identity_info_response_dto.dart';
 
-/// 使用 Dio 呼叫 ASP.NET Core Identity API。
+/// 使用 Dio 呼叫 FoodLedger 自訂 Auth API。
 class AuthApiService implements AuthApi {
   const AuthApiService(this._dio);
+
+  /// 建立 FoodLedger 使用者的正式 API 路徑。
+  static const registerPath = '/api/auth/register';
+
+  /// 驗證 FoodLedger 使用者的正式 API 路徑。
+  static const loginPath = '/api/auth/login';
+
+  /// 取得目前已登入使用者的正式 API 路徑。
+  static const currentUserPath = '/api/users/me';
 
   final Dio _dio;
 
   @override
-  Future<void> register({
-    required String email,
-    required String password,
-  }) async {
-    await _request(
-      () => _dio.post<Object?>(
-        '/register',
-        data: {'email': email, 'password': password},
-      ),
-    );
-  }
-
-  @override
-  Future<AccessTokenResponseDto> signIn({
+  Future<AuthResponseDto> register({
+    required String userAccount,
+    required String displayName,
     required String email,
     required String password,
   }) async {
     final response = await _request(
       () => _dio.post<Object?>(
-        '/login',
-        data: {'email': email, 'password': password},
+        registerPath,
+        data: {
+          'userAccount': userAccount,
+          'displayName': displayName,
+          'email': email,
+          'password': password,
+        },
       ),
     );
-    return AccessTokenResponseDto.fromJson(response.data);
+    return AuthResponseDto.fromJson(response.data);
   }
 
   @override
-  Future<AccessTokenResponseDto> refresh({required String refreshToken}) async {
+  Future<AuthResponseDto> signIn({
+    required String loginId,
+    required String password,
+  }) async {
     final response = await _request(
-      () =>
-          _dio.post<Object?>('/refresh', data: {'refreshToken': refreshToken}),
+      () => _dio.post<Object?>(
+        loginPath,
+        data: {'loginId': loginId, 'password': password},
+      ),
     );
-    return AccessTokenResponseDto.fromJson(response.data);
+    return AuthResponseDto.fromJson(response.data);
   }
 
   @override
   Future<CurrentUserResponseDto> getCurrentUser() async {
-    final response = await _request(() => _dio.get<Object?>('/api/users/me'));
+    final response = await _request(() => _dio.get<Object?>(currentUserPath));
     return CurrentUserResponseDto.fromJson(response.data);
-  }
-
-  @override
-  Future<IdentityInfoResponseDto> getIdentityInfo() async {
-    final response = await _request(() => _dio.get<Object?>('/manage/info'));
-    return IdentityInfoResponseDto.fromJson(response.data);
   }
 
   Future<Response<Object?>> _request(

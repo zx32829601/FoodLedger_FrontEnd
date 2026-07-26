@@ -2,12 +2,14 @@
 class AppUser {
   const AppUser({
     required this.id,
+    required this.userAccount,
     required this.displayName,
     required this.email,
     required this.isAdmin,
   });
 
   final String id;
+  final String userAccount;
   final String displayName;
   final String email;
   final bool isAdmin;

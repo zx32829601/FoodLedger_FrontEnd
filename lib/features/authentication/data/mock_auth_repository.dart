@@ -7,44 +7,74 @@ class MockAuthRepository implements AuthRepository {
 
   @override
   Future<AppUser> signIn({
-    required String email,
+    required String loginId,
     required String password,
   }) async {
     await Future<void>.delayed(_requestDelay);
-    final normalizedEmail = email.trim().toLowerCase();
-    if (!_isValidEmail(normalizedEmail) || password.length < 8) {
-      throw const AuthException('電子郵件或密碼不正確');
+    final normalizedLoginId = loginId.trim().toLowerCase();
+    final isEmail = normalizedLoginId.contains('@');
+    if ((isEmail
+            ? !_isValidEmail(normalizedLoginId)
+            : !_isValidUserAccount(normalizedLoginId)) ||
+        password.length < 8) {
+      throw const AuthException(
+        'Invalid credentials.',
+        code: 'Auth.InvalidCredentials',
+      );
     }
 
+    final email = isEmail
+        ? normalizedLoginId
+        : '$normalizedLoginId@example.com';
+    final userAccount = isEmail
+        ? normalizedLoginId.split('@').first
+        : normalizedLoginId;
     return _createUser(
-      email: normalizedEmail,
-      displayName: _displayNameFromEmail(normalizedEmail),
+      userAccount: userAccount,
+      email: email,
+      displayName: _displayNameFromEmail(email),
     );
   }
 
   @override
   Future<AppUser> register({
+    required String userAccount,
+    required String displayName,
     required String email,
     required String password,
   }) async {
     await Future<void>.delayed(_requestDelay);
+    final normalizedUserAccount = userAccount.trim().toLowerCase();
     final normalizedEmail = email.trim().toLowerCase();
-    if (!_isValidEmail(normalizedEmail) || password.length < 8) {
-      throw const AuthException('註冊資料格式不正確，請重新確認');
+    final trimmedDisplayName = displayName.trim();
+    if (!_isValidUserAccount(normalizedUserAccount) ||
+        trimmedDisplayName.isEmpty ||
+        !_isValidEmail(normalizedEmail) ||
+        password.length < 8) {
+      throw const AuthException(
+        'Registration data is invalid.',
+        code: 'Validation.Failed',
+      );
     }
 
     return _createUser(
+      userAccount: normalizedUserAccount,
       email: normalizedEmail,
-      displayName: _displayNameFromEmail(normalizedEmail),
+      displayName: trimmedDisplayName,
     );
   }
 
   @override
   void signOut() {}
 
-  AppUser _createUser({required String email, required String displayName}) {
+  AppUser _createUser({
+    required String userAccount,
+    required String email,
+    required String displayName,
+  }) {
     return AppUser(
       id: 'mock-${email.hashCode.abs()}',
+      userAccount: userAccount,
       displayName: displayName,
       email: email,
       isAdmin: email.startsWith('admin@'),
@@ -56,6 +86,10 @@ class MockAuthRepository implements AuthRepository {
     return atIndex > 0 &&
         atIndex < email.length - 3 &&
         email.indexOf('.', atIndex) > atIndex + 1;
+  }
+
+  static bool _isValidUserAccount(String userAccount) {
+    return RegExp(r'^[a-z0-9_-]{4,30}$').hasMatch(userAccount);
   }
 
   static String _displayNameFromEmail(String email) {

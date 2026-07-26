@@ -7,13 +7,24 @@ import '../../data/auth_api.dart';
 import '../../data/auth_api_service.dart';
 import '../../domain/models/app_user.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../auth_strings.dart';
 
 final authTokenStoreProvider = Provider<AuthTokenStore>((ref) {
   return AuthTokenStore();
 });
 
 final apiClientProvider = Provider<ApiClient>((ref) {
-  final client = ApiClient(tokenStore: ref.watch(authTokenStoreProvider));
+  final client = ApiClient(
+    tokenStore: ref.watch(authTokenStoreProvider),
+    onUnauthorized: () {
+      ref.read(authenticationProvider.notifier).handleUnauthorized();
+    },
+    shouldNotifyUnauthorized: (request) {
+      final path = request.uri.path;
+      return path != AuthApiService.loginPath &&
+          path != AuthApiService.registerPath;
+    },
+  );
   ref.onDispose(client.close);
   return client;
 });
@@ -40,25 +51,36 @@ class AuthenticationState {
     required this.status,
     this.user,
     this.errorMessage,
+    this.fieldErrors = const {},
+    this.traceId,
   });
 
-  const AuthenticationState.unauthenticated({this.errorMessage})
-    : status = AuthenticationStatus.unauthenticated,
-      user = null;
+  const AuthenticationState.unauthenticated({
+    this.errorMessage,
+    this.fieldErrors = const {},
+    this.traceId,
+  }) : status = AuthenticationStatus.unauthenticated,
+       user = null;
 
   const AuthenticationState.authenticating()
     : status = AuthenticationStatus.authenticating,
       user = null,
-      errorMessage = null;
+      errorMessage = null,
+      fieldErrors = const {},
+      traceId = null;
 
   const AuthenticationState.authenticated(AppUser authenticatedUser)
     : status = AuthenticationStatus.authenticated,
       user = authenticatedUser,
-      errorMessage = null;
+      errorMessage = null,
+      fieldErrors = const {},
+      traceId = null;
 
   final AuthenticationStatus status;
   final AppUser? user;
   final String? errorMessage;
+  final Map<String, String> fieldErrors;
+  final String? traceId;
 
   bool get isAuthenticated => status == AuthenticationStatus.authenticated;
   bool get isAuthenticating => status == AuthenticationStatus.authenticating;
@@ -73,49 +95,67 @@ class AuthenticationController extends Notifier<AuthenticationState> {
         : AuthenticationState.authenticated(initialUser);
   }
 
-  Future<bool> signIn({required String email, required String password}) async {
-    state = const AuthenticationState.authenticating();
-    try {
-      final user = await ref
+  Future<bool> signIn({required String loginId, required String password}) {
+    return _authenticate(
+      operation: () => ref
           .read(authRepositoryProvider)
-          .signIn(email: email, password: password);
-      state = AuthenticationState.authenticated(user);
-      return true;
-    } on AuthException catch (error) {
-      state = AuthenticationState.unauthenticated(errorMessage: error.message);
-      return false;
-    } catch (_) {
-      state = const AuthenticationState.unauthenticated(
-        errorMessage: '目前無法登入，請稍後再試',
-      );
-      return false;
-    }
+          .signIn(loginId: loginId, password: password),
+      unexpectedErrorMessage: AuthStrings.loginUnavailable,
+    );
   }
 
   Future<bool> register({
+    required String userAccount,
+    required String displayName,
     required String email,
     required String password,
+  }) {
+    return _authenticate(
+      operation: () => ref
+          .read(authRepositoryProvider)
+          .register(
+            userAccount: userAccount,
+            displayName: displayName,
+            email: email,
+            password: password,
+          ),
+      unexpectedErrorMessage: AuthStrings.registerUnavailable,
+    );
+  }
+
+  Future<bool> _authenticate({
+    required Future<AppUser> Function() operation,
+    required String unexpectedErrorMessage,
   }) async {
     state = const AuthenticationState.authenticating();
     try {
-      final user = await ref
-          .read(authRepositoryProvider)
-          .register(email: email, password: password);
+      final user = await operation();
       state = AuthenticationState.authenticated(user);
       return true;
     } on AuthException catch (error) {
-      state = AuthenticationState.unauthenticated(errorMessage: error.message);
+      state = AuthenticationState.unauthenticated(
+        errorMessage: AuthStrings.errorMessage(
+          code: error.code,
+          fallback: error.message,
+        ),
+        fieldErrors: {
+          for (final entry in error.fieldErrors.entries)
+            entry.key: AuthStrings.fieldErrorMessage(entry.value),
+        },
+        traceId: error.traceId,
+      );
       return false;
     } catch (_) {
-      state = const AuthenticationState.unauthenticated(
-        errorMessage: '目前無法註冊，請稍後再試',
+      state = AuthenticationState.unauthenticated(
+        errorMessage: unexpectedErrorMessage,
       );
       return false;
     }
   }
 
   void clearError() {
-    if (!state.isAuthenticated && state.errorMessage != null) {
+    if (!state.isAuthenticated &&
+        (state.errorMessage != null || state.fieldErrors.isNotEmpty)) {
       state = const AuthenticationState.unauthenticated();
     }
   }
@@ -123,6 +163,13 @@ class AuthenticationController extends Notifier<AuthenticationState> {
   void signOut() {
     ref.read(authRepositoryProvider).signOut();
     state = const AuthenticationState.unauthenticated();
+  }
+
+  void handleUnauthorized() {
+    ref.read(authRepositoryProvider).signOut();
+    state = const AuthenticationState.unauthenticated(
+      errorMessage: AuthStrings.sessionExpired,
+    );
   }
 }
 
