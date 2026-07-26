@@ -118,7 +118,7 @@ Copy-Item .env.example .env
 
 ```dotenv
 FOOD_LEDGER_API_BASE_URL=http://192.168.0.177:5062
-FOODLEDGER_WEB_HTTP_PORT=8080
+FOODLEDGER_WEB_HTTP_PORT=8180
 FOODLEDGER_WEB_IMAGE=foodledger-web:local
 ```
 
@@ -128,7 +128,7 @@ FOODLEDGER_WEB_IMAGE=foodledger-web:local
 .\scripts\deploy-local.ps1
 ```
 
-網站預設位於 `http://localhost:8080`。Nginx 已設定 Flutter Web SPA 路由回退與 `/health` 健康檢查。
+網站預設位於 `http://localhost:8180`。Nginx 已設定 Flutter Web SPA 路由回退與 `/health` 健康檢查；主機 `8080` 保留給 Jenkins 使用。
 
 `FOOD_LEDGER_API_BASE_URL` 會在 Docker build 時寫入 Web 產物；修改後必須重新 build，只有重啟容器不會生效。
 
@@ -203,10 +203,10 @@ Jenkins 會依 `Jenkinsfile` 輪詢 Git，驗證 Compose、建立 Docker image�
 
 ```text
 FOOD_LEDGER_API_BASE_URL=http://<Jenkins 主機的區網 IP>:5062
-FOODLEDGER_WEB_HTTP_PORT=8080
+FOODLEDGER_WEB_HTTP_PORT=8180
 ```
 
-後端也必須在 Production 設定完全相同的前端 Origin，例如 `http://<Jenkins 主機的區網 IP>:8080`；協定、主機與連接埠任一不同都視為不同 Origin。
+後端也必須在 Production 設定完全相同的前端 Origin，例如 `http://<Jenkins 主機的區網 IP>:8180`；協定、主機與連接埠任一不同都視為不同 Origin。
 
 ## 頁面與資訊架構
 

@@ -9,7 +9,7 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $EnvPath = Join-Path $RepoRoot ".env"
 $DockerDesktopBinPath = Join-Path $env:LOCALAPPDATA "Programs\DockerDesktop\resources\bin"
 $ComposeScriptPath = Join-Path $PSScriptRoot "Invoke-DockerCompose.ps1"
-$DefaultWebHttpPort = "8080"
+$DefaultWebHttpPort = "8180"
 
 function Write-Step {
     param([string]$Message)
