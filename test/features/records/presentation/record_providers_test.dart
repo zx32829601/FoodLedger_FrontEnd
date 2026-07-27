@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_daily_record_repository.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_foods.dart';
+import 'package:food_ledger_frontend/features/records/data/mock_nutrition_repository.dart';
 import 'package:food_ledger_frontend/features/records/domain/models/meal_type.dart';
 import 'package:food_ledger_frontend/features/records/presentation/providers/record_providers.dart';
 
@@ -9,7 +10,12 @@ void main() {
   test('DailyRecordsController_AddRecord_UpdatesRecordsAndSummary', () async {
     final repository = MockDailyRecordRepository(initialRecords: []);
     final container = ProviderContainer(
-      overrides: [dailyRecordRepositoryProvider.overrideWithValue(repository)],
+      overrides: [
+        dailyRecordRepositoryProvider.overrideWithValue(repository),
+        nutritionRepositoryProvider.overrideWithValue(
+          MockNutritionRepository(repository),
+        ),
+      ],
     );
     addTearDown(container.dispose);
 

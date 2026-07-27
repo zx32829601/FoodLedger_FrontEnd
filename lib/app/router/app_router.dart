@@ -8,6 +8,7 @@ import '../../features/authentication/presentation/providers/auth_providers.dart
 import '../../features/home/presentation/home_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/records/presentation/records_page.dart';
+import '../../features/records/presentation/food_search_page.dart';
 import '../shell/app_shell.dart';
 import 'app_routes.dart';
 
@@ -105,6 +106,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.records,
                 builder: (context, state) => const RecordsPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.foodSearch,
+                builder: (context, state) => const FoodSearchPage(),
               ),
             ],
           ),

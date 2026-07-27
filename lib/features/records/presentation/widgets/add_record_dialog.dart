@@ -1,27 +1,44 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_spacing.dart';
 import '../../domain/models/food.dart';
+import '../../domain/models/daily_record.dart';
 import '../../domain/models/meal_type.dart';
 import '../providers/record_providers.dart';
 
 class AddRecordDialog extends ConsumerStatefulWidget {
-  const AddRecordDialog({super.key});
+  const AddRecordDialog({this.initialRecord, super.key});
+
+  final DailyRecord? initialRecord;
 
   @override
   ConsumerState<AddRecordDialog> createState() => _AddRecordDialogState();
 }
 
 class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
-  final _quantityController = TextEditingController(text: '100');
+  late final TextEditingController _quantityController;
   String _query = '';
   Food? _selectedFood;
-  MealType _mealType = MealType.breakfast;
+  late MealType _mealType;
   bool _isSubmitting = false;
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _quantityController = TextEditingController(
+      text: widget.initialRecord?.quantityGrams.toString() ?? '100',
+    );
+    _selectedFood = widget.initialRecord?.food;
+    _mealType = widget.initialRecord?.mealType ?? MealType.breakfast;
+  }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _quantityController.dispose();
     super.dispose();
   }
@@ -31,7 +48,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
     final foods = ref.watch(foodSearchProvider(_query));
 
     return AlertDialog(
-      title: const Text('新增飲食紀錄'),
+      title: Text(widget.initialRecord == null ? '新增飲食紀錄' : '編輯飲食紀錄'),
       content: SizedBox(
         width: 560,
         height: 470,
@@ -45,7 +62,12 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
                 hintText: '例如：雞胸肉、白飯',
                 prefixIcon: Icon(Icons.search),
               ),
-              onChanged: (value) => setState(() => _query = value),
+              onChanged: (value) {
+                _debounce?.cancel();
+                _debounce = Timer(const Duration(milliseconds: 350), () {
+                  if (mounted) setState(() => _query = value);
+                });
+              },
             ),
             const SizedBox(height: AppSpacing.medium),
             Expanded(
@@ -153,13 +175,24 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
     }
 
     setState(() => _isSubmitting = true);
-    await ref
-        .read(dailyRecordsProvider.notifier)
-        .addRecord(
-          food: _selectedFood!,
-          quantityGrams: quantity,
-          mealType: _mealType,
-        );
+    if (widget.initialRecord == null) {
+      await ref
+          .read(dailyRecordsProvider.notifier)
+          .addRecord(
+            food: _selectedFood!,
+            quantityGrams: quantity,
+            mealType: _mealType,
+          );
+    } else {
+      await ref
+          .read(dailyRecordsProvider.notifier)
+          .updateRecord(
+            record: widget.initialRecord!,
+            food: _selectedFood!,
+            quantityGrams: quantity,
+            mealType: _mealType,
+          );
+    }
 
     if (!mounted) return;
     final result = ref.read(dailyRecordsProvider);
@@ -172,8 +205,10 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
     }
 
     Navigator.pop(context);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('飲食紀錄已新增')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(widget.initialRecord == null ? '飲食紀錄已新增' : '飲食紀錄已更新'),
+      ),
+    );
   }
 }

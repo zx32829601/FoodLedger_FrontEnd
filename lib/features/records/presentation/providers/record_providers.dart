@@ -1,8 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/mock_daily_record_repository.dart';
-import '../../data/mock_food_repository.dart';
-import '../../data/mock_nutrition_repository.dart';
+import '../../../authentication/presentation/providers/auth_providers.dart';
+import '../../data/api_daily_record_repository.dart';
+import '../../data/api_food_repository.dart';
+import '../../data/api_nutrition_repository.dart';
 import '../../domain/models/daily_record.dart';
 import '../../domain/models/food.dart';
 import '../../domain/models/meal_type.dart';
@@ -12,15 +13,15 @@ import '../../domain/repositories/food_repository.dart';
 import '../../domain/repositories/nutrition_repository.dart';
 
 final foodRepositoryProvider = Provider<FoodRepository>((ref) {
-  return MockFoodRepository();
+  return ApiFoodRepository(ref.watch(apiClientProvider).dio);
 });
 
 final dailyRecordRepositoryProvider = Provider<DailyRecordRepository>((ref) {
-  return MockDailyRecordRepository();
+  return ApiDailyRecordRepository(ref.watch(apiClientProvider).dio);
 });
 
 final nutritionRepositoryProvider = Provider<NutritionRepository>((ref) {
-  return MockNutritionRepository(ref.watch(dailyRecordRepositoryProvider));
+  return ApiNutritionRepository(ref.watch(apiClientProvider).dio);
 });
 
 class SelectedDateController extends Notifier<DateTime> {
@@ -78,6 +79,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
             food: food,
             quantityGrams: quantityGrams,
             consumedAt: localConsumedAt,
+            mealTypeCode: mealType.code,
           );
       return ref
           .read(dailyRecordRepositoryProvider)
@@ -90,6 +92,30 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await ref.read(dailyRecordRepositoryProvider).deleteRecord(recordId);
+      return ref
+          .read(dailyRecordRepositoryProvider)
+          .getRecordsForDate(selectedDate);
+    });
+  }
+
+  Future<void> updateRecord({
+    required DailyRecord record,
+    required Food food,
+    required double quantityGrams,
+    required MealType mealType,
+  }) async {
+    final selectedDate = ref.read(selectedDateProvider);
+    state = await AsyncValue.guard(() async {
+      await ref
+          .read(dailyRecordRepositoryProvider)
+          .updateRecord(
+            recordId: record.id,
+            food: food,
+            quantityGrams: quantityGrams,
+            consumedAt: record.consumedAt,
+            mealTypeCode: mealType.code,
+            note: record.note,
+          );
       return ref
           .read(dailyRecordRepositoryProvider)
           .getRecordsForDate(selectedDate);
