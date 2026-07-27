@@ -50,7 +50,12 @@ final initialAuthUserProvider = Provider<AppUser?>((ref) => null);
 /// Flutter Web 啟動時透過 HttpOnly Cookie 還原 Session；行動端保留未來安全儲存流程。
 final restoreSessionOnStartProvider = Provider<bool>((ref) => kIsWeb);
 
-enum AuthenticationStatus { unauthenticated, authenticating, authenticated }
+enum AuthenticationStatus {
+  restoring,
+  unauthenticated,
+  authenticating,
+  authenticated,
+}
 
 /// 應用程式唯一可信的登入 Session 狀態。
 class AuthenticationState {
@@ -68,6 +73,13 @@ class AuthenticationState {
     this.traceId,
   }) : status = AuthenticationStatus.unauthenticated,
        user = null;
+
+  const AuthenticationState.restoring()
+    : status = AuthenticationStatus.restoring,
+      user = null,
+      errorMessage = null,
+      fieldErrors = const {},
+      traceId = null;
 
   const AuthenticationState.authenticating()
     : status = AuthenticationStatus.authenticating,
@@ -91,6 +103,7 @@ class AuthenticationState {
 
   bool get isAuthenticated => status == AuthenticationStatus.authenticated;
   bool get isAuthenticating => status == AuthenticationStatus.authenticating;
+  bool get isRestoring => status == AuthenticationStatus.restoring;
 }
 
 class AuthenticationController extends Notifier<AuthenticationState> {
@@ -102,6 +115,7 @@ class AuthenticationController extends Notifier<AuthenticationState> {
     }
     if (ref.watch(restoreSessionOnStartProvider)) {
       unawaited(Future<void>.microtask(_restoreSession));
+      return const AuthenticationState.restoring();
     }
     return const AuthenticationState.unauthenticated();
   }
@@ -188,8 +202,10 @@ class AuthenticationController extends Notifier<AuthenticationState> {
       final user = await ref.read(authRepositoryProvider).restoreSession();
       if (user != null) {
         state = AuthenticationState.authenticated(user);
+      } else {
+        state = const AuthenticationState.unauthenticated();
       }
-    } on AuthException {
+    } catch (_) {
       state = const AuthenticationState.unauthenticated();
     }
   }

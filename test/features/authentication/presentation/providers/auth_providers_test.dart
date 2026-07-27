@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_ledger_frontend/core/auth/auth_token_store.dart';
@@ -19,6 +21,22 @@ void main() {
       final state = container.read(authenticationProvider);
 
       expect(state.status, AuthenticationStatus.unauthenticated);
+      expect(state.user, isNull);
+    });
+
+    test('Web 還原 Session 完成前維持 restoring 狀態', () {
+      final repository = _PendingRestoreAuthRepository();
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(repository),
+          restoreSessionOnStartProvider.overrideWithValue(true),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final state = container.read(authenticationProvider);
+
+      expect(state.status, AuthenticationStatus.restoring);
       expect(state.user, isNull);
     });
 
@@ -169,4 +187,29 @@ class _SignOutRecordingAuthRepository implements AuthRepository {
     signOutCallCount += 1;
     _tokenStore.clear();
   }
+}
+
+class _PendingRestoreAuthRepository implements AuthRepository {
+  final Completer<AppUser?> _restoreCompleter = Completer<AppUser?>();
+
+  @override
+  Future<AppUser> register({
+    required String userAccount,
+    required String displayName,
+    required String email,
+    required String password,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AppUser?> restoreSession() => _restoreCompleter.future;
+
+  @override
+  Future<AppUser> signIn({required String loginId, required String password}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> signOut() async {}
 }

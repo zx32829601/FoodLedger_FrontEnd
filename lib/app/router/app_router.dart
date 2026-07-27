@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -26,14 +26,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isAuthenticationRoute =
           state.matchedLocation == AppRoutes.login ||
           state.matchedLocation == AppRoutes.register;
+      final isSessionRestoreRoute =
+          state.matchedLocation == AppRoutes.sessionRestore;
+
+      if (authState.isRestoring) {
+        if (isSessionRestoreRoute) {
+          return null;
+        }
+        return Uri(
+          path: AppRoutes.sessionRestore,
+          queryParameters: {'from': state.uri.toString()},
+        ).toString();
+      }
 
       if (!authState.isAuthenticated) {
         if (isAuthenticationRoute) {
           return null;
         }
+        final returnLocation = isSessionRestoreRoute
+            ? _safeReturnLocation(state.uri.queryParameters['from'])
+            : state.uri.toString();
         return Uri(
           path: AppRoutes.login,
-          queryParameters: {'from': state.uri.toString()},
+          queryParameters: {'from': returnLocation},
         ).toString();
       }
 
@@ -46,10 +61,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return _safeReturnLocation(state.uri.queryParameters['from']);
       }
 
+      if (isSessionRestoreRoute) {
+        return _safeReturnLocation(state.uri.queryParameters['from']);
+      }
+
       return null;
     },
     routes: [
       GoRoute(path: '/', redirect: (_, _) => AppRoutes.home),
+      GoRoute(
+        path: AppRoutes.sessionRestore,
+        builder: (context, state) => const _SessionRestorePage(),
+      ),
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const AuthenticationPage(
@@ -115,6 +138,7 @@ String _safeReturnLocation(String? location) {
   if (location == null ||
       !location.startsWith('/') ||
       location.startsWith('//') ||
+      location.startsWith(AppRoutes.sessionRestore) ||
       location.startsWith(AppRoutes.login) ||
       location.startsWith(AppRoutes.register)) {
     return AppRoutes.home;
@@ -124,4 +148,13 @@ String _safeReturnLocation(String? location) {
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
+}
+
+class _SessionRestorePage extends StatelessWidget {
+  const _SessionRestorePage();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  }
 }
