@@ -2,11 +2,13 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
+import 'app/bootstrap/web_font_loader.dart';
 import 'app/theme/theme_mode_controller.dart';
 import 'app/theme/theme_preference_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await loadWebFonts();
   final themePreferenceStore = SharedPreferencesThemePreferenceStore();
   final initialThemeMode = await themePreferenceStore.load();
 

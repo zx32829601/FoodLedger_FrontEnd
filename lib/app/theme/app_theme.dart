@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'app_fonts.dart';
 import 'app_radius.dart';
 
 /// FoodLedger 的 Material 3 亮色與暗色主題。
@@ -18,6 +19,7 @@ abstract final class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
+      fontFamily: AppFonts.notoSansTc,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: isLight
           ? AppColors.lightBackground

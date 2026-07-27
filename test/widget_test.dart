@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,6 +33,8 @@ void main() {
     required Size surfaceSize,
     AppUser? initialUser = memberUser,
     AuthRepository? authRepository,
+    bool restoreSessionOnStart = false,
+    bool settle = true,
   }) async {
     tester.view.physicalSize = surfaceSize;
     tester.view.devicePixelRatio = 1;
@@ -47,12 +51,33 @@ void main() {
           authRepositoryProvider.overrideWithValue(
             authRepository ?? MockAuthRepository(),
           ),
+          restoreSessionOnStartProvider.overrideWithValue(
+            restoreSessionOnStart,
+          ),
         ],
         child: const FoodLedgerApp(),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump();
+    }
   }
+
+  testWidgets('Web Session 還原完成前顯示載入畫面而非登入頁', (tester) async {
+    await pumpApp(
+      tester,
+      surfaceSize: const Size(390, 844),
+      initialUser: null,
+      authRepository: _PendingRestoreAuthRepository(),
+      restoreSessionOnStart: true,
+      settle: false,
+    );
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byKey(const Key('auth-login-id-field')), findsNothing);
+  });
 
   testWidgets('未登入使用者會導向登入頁', (tester) async {
     await pumpApp(tester, surfaceSize: const Size(390, 844), initialUser: null);
@@ -436,4 +461,29 @@ class _MemoryThemePreferenceStore implements ThemePreferenceStore {
   Future<void> save(ThemeMode mode) async {
     this.mode = mode;
   }
+}
+
+class _PendingRestoreAuthRepository implements AuthRepository {
+  final Completer<AppUser?> _restoreCompleter = Completer<AppUser?>();
+
+  @override
+  Future<AppUser> register({
+    required String userAccount,
+    required String displayName,
+    required String email,
+    required String password,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AppUser?> restoreSession() => _restoreCompleter.future;
+
+  @override
+  Future<AppUser> signIn({required String loginId, required String password}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> signOut() async {}
 }
