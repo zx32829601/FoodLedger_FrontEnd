@@ -199,7 +199,7 @@ GitHub Actions 的 [`.github/workflows/flutter-web-ci.yml`](.github/workflows/fl
 4. Flutter Web release build。
 5. Production Docker image build。
 
-Jenkins 會依 `Jenkinsfile` 輪詢 Git，驗證 Compose、建立 Docker image，並在 `RUN_LOCAL_DEPLOY=true` 時部署到 Jenkins 主機。若網站要提供區網其他裝置使用，Jenkins 參數應設定為：
+Jenkins 會依 `Jenkinsfile` 輪詢 Git，驗證 Compose、建立 Docker image，並在 `RUN_LOCAL_DEPLOY=true` 時部署到 Jenkins 主機。`FOOD_LEDGER_API_BASE_URL` 參數留空時會沿用 Jenkins workspace 未提交的 `.env`；手動填值時才會覆寫 `.env`。若網站要提供區網其他裝置使用，請在部署主機的 `.env` 設定：
 
 ```text
 FOOD_LEDGER_API_BASE_URL=http://<Jenkins 主機的區網 IP>:5062

@@ -18,8 +18,8 @@ pipeline {
         )
         string(
             name: 'FOOD_LEDGER_API_BASE_URL',
-            defaultValue: 'http://localhost:5062',
-            description: '瀏覽器可連線的後端 API URL；此值會寫入 Flutter Web 產物。'
+            defaultValue: '',
+            description: '選填的後端 API URL 覆寫值；留空時使用部署主機 .env。'
         )
         string(
             name: 'FOODLEDGER_WEB_HTTP_PORT',
@@ -61,27 +61,45 @@ pipeline {
 
         stage('Validate Docker Compose') {
             steps {
-                withEnv([
-                    "PATH=${params.DOCKER_CLI_BIN};${env.DOCKER_DESKTOP_MACHINE_BIN};${env.DOCKER_DESKTOP_USER_BIN};${env.PATH}",
-                    "FOOD_LEDGER_API_BASE_URL=${params.FOOD_LEDGER_API_BASE_URL}",
-                    "FOODLEDGER_WEB_HTTP_PORT=${params.FOODLEDGER_WEB_HTTP_PORT}",
-                    "FOODLEDGER_WEB_IMAGE=${params.FOODLEDGER_WEB_IMAGE}"
-                ]) {
-                    powershell "& './scripts/Invoke-DockerCompose.ps1' -ArgumentList @('config', '--quiet')"
+                script {
+                    def composeEnvironment = [
+                        "PATH=${params.DOCKER_CLI_BIN};${env.DOCKER_DESKTOP_MACHINE_BIN};${env.DOCKER_DESKTOP_USER_BIN};${env.PATH}",
+                        "FOODLEDGER_WEB_HTTP_PORT=${params.FOODLEDGER_WEB_HTTP_PORT}",
+                        "FOODLEDGER_WEB_IMAGE=${params.FOODLEDGER_WEB_IMAGE}"
+                    ]
+
+                    if (params.FOOD_LEDGER_API_BASE_URL?.trim()) {
+                        composeEnvironment.add(
+                            "FOOD_LEDGER_API_BASE_URL=${params.FOOD_LEDGER_API_BASE_URL.trim()}"
+                        )
+                    }
+
+                    withEnv(composeEnvironment) {
+                        powershell "& './scripts/Invoke-DockerCompose.ps1' -ArgumentList @('config', '--quiet')"
+                    }
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                timeout(time: 30, unit: 'MINUTES') {
-                    withEnv([
+                script {
+                    def composeEnvironment = [
                         "PATH=${params.DOCKER_CLI_BIN};${env.DOCKER_DESKTOP_MACHINE_BIN};${env.DOCKER_DESKTOP_USER_BIN};${env.PATH}",
-                        "FOOD_LEDGER_API_BASE_URL=${params.FOOD_LEDGER_API_BASE_URL}",
                         "FOODLEDGER_WEB_HTTP_PORT=${params.FOODLEDGER_WEB_HTTP_PORT}",
                         "FOODLEDGER_WEB_IMAGE=${params.FOODLEDGER_WEB_IMAGE}"
-                    ]) {
-                        powershell "& './scripts/Invoke-DockerCompose.ps1' -ArgumentList @('build', '--pull')"
+                    ]
+
+                    if (params.FOOD_LEDGER_API_BASE_URL?.trim()) {
+                        composeEnvironment.add(
+                            "FOOD_LEDGER_API_BASE_URL=${params.FOOD_LEDGER_API_BASE_URL.trim()}"
+                        )
+                    }
+
+                    timeout(time: 30, unit: 'MINUTES') {
+                        withEnv(composeEnvironment) {
+                            powershell "& './scripts/Invoke-DockerCompose.ps1' -ArgumentList @('build', '--pull')"
+                        }
                     }
                 }
             }
@@ -94,14 +112,23 @@ pipeline {
                 }
             }
             steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    withEnv([
+                script {
+                    def composeEnvironment = [
                         "PATH=${params.DOCKER_CLI_BIN};${env.DOCKER_DESKTOP_MACHINE_BIN};${env.DOCKER_DESKTOP_USER_BIN};${env.PATH}",
-                        "FOOD_LEDGER_API_BASE_URL=${params.FOOD_LEDGER_API_BASE_URL}",
                         "FOODLEDGER_WEB_HTTP_PORT=${params.FOODLEDGER_WEB_HTTP_PORT}",
                         "FOODLEDGER_WEB_IMAGE=${params.FOODLEDGER_WEB_IMAGE}"
-                    ]) {
-                        powershell "& './scripts/deploy-local.ps1' -SkipBuild"
+                    ]
+
+                    if (params.FOOD_LEDGER_API_BASE_URL?.trim()) {
+                        composeEnvironment.add(
+                            "FOOD_LEDGER_API_BASE_URL=${params.FOOD_LEDGER_API_BASE_URL.trim()}"
+                        )
+                    }
+
+                    timeout(time: 10, unit: 'MINUTES') {
+                        withEnv(composeEnvironment) {
+                            powershell "& './scripts/deploy-local.ps1' -SkipBuild"
+                        }
                     }
                 }
             }
