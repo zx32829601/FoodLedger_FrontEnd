@@ -153,7 +153,7 @@ class _MealTypeBanner extends StatelessWidget {
             runSpacing: AppSpacing.small,
             children: [
               for (final code in NutrientCodes.core)
-                _MealNutrientMetric(
+                _NutritionMetric(
                   nutrient: totals.nutrientByCode(code),
                   fallbackLabel: fallbackNutrientLabel(code),
                 ),
@@ -161,35 +161,6 @@ class _MealTypeBanner extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _MealNutrientMetric extends StatelessWidget {
-  const _MealNutrientMetric({
-    required this.nutrient,
-    required this.fallbackLabel,
-  });
-
-  final NutrientAmount? nutrient;
-  final String fallbackLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          nutrient?.displayName ?? fallbackLabel,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        Text(
-          formatNutrientAmount(nutrient),
-          style: Theme.of(
-            context,
-          ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-      ],
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:food_ledger_frontend/core/localization/localization_providers.dart';
 import 'package:food_ledger_frontend/features/home/presentation/providers/home_providers.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_daily_record_repository.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_nutrition_repository.dart';
@@ -9,10 +10,11 @@ import 'package:food_ledger_frontend/features/records/presentation/providers/rec
 void main() {
   test('首頁資料重新載入時固定查詢今天，不受紀錄頁選取日期影響', () async {
     final today = DateTime(2026, 7, 28);
+    final now = DateTime.utc(2026, 7, 27, 16, 30);
     final repository = _RecordingDailyRecordRepository();
     final container = ProviderContainer(
       overrides: [
-        homeTodayProvider.overrideWithValue(today),
+        homeNowProvider.overrideWithValue(() => now),
         dailyRecordRepositoryProvider.overrideWithValue(repository),
         nutritionRepositoryProvider.overrideWithValue(
           MockNutritionRepository(repository),
@@ -45,6 +47,25 @@ void main() {
     );
     expect(firstSummary.date, today);
     expect(refreshedSummary.date, today);
+  });
+
+  test('首頁今天依 IANA 時區計算，跨日後可重新整理', () {
+    var now = DateTime.utc(2026, 7, 28, 1);
+    final container = ProviderContainer(
+      overrides: [homeNowProvider.overrideWithValue(() => now)],
+    );
+    addTearDown(container.dispose);
+
+    container
+        .read(nutritionTimeZoneProvider.notifier)
+        .select('America/New_York');
+
+    expect(container.read(homeTodayProvider), DateTime(2026, 7, 27));
+
+    now = DateTime.utc(2026, 7, 28, 5);
+    container.read(homeTodayProvider.notifier).refresh();
+
+    expect(container.read(homeTodayProvider), DateTime(2026, 7, 28));
   });
 }
 

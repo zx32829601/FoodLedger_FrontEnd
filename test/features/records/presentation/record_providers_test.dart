@@ -73,6 +73,28 @@ void main() {
     },
   );
 
+  test('新增成功後不會因紀錄頁日期重新載入失敗而誤報失敗', () async {
+    final repository = _FailingReadDailyRecordRepository();
+    final container = ProviderContainer(
+      overrides: [dailyRecordRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    container
+        .read(selectedDateProvider.notifier)
+        .select(DateTime(2025, 12, 15));
+
+    await container
+        .read(dailyRecordsProvider.notifier)
+        .addRecord(
+          food: mockFoods[1],
+          quantityGrams: 100,
+          mealType: MealType.lunch,
+          recordDate: DateTime(2026, 7, 28),
+        );
+
+    expect(container.read(dailyRecordsProvider).hasError, isFalse);
+  });
+
   test('SelectedDateController 以前後七天切換週期', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
@@ -85,6 +107,19 @@ void main() {
     controller.nextWeek();
     expect(container.read(selectedDateProvider), DateTime(2026, 7, 29));
   });
+}
+
+class _FailingReadDailyRecordRepository extends MockDailyRecordRepository {
+  _FailingReadDailyRecordRepository() : super(initialRecords: []);
+
+  @override
+  Future<List<DailyRecord>> getRecordsForDate(
+    DateTime date, {
+    required String timeZone,
+    required String langCode,
+  }) async {
+    throw Exception('selected date reload failed');
+  }
 }
 
 class _RecordingDailyRecordRepository extends MockDailyRecordRepository {

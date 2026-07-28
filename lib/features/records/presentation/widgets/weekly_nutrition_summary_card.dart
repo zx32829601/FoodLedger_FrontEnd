@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/app_breakpoints.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../domain/models/nutrient_codes.dart';
 import '../../domain/models/nutrition_summary.dart';
@@ -8,9 +9,6 @@ import '../nutrient_amount_formatter.dart';
 import '../nutrient_labels.dart';
 
 const _swipeVelocityThreshold = 250.0;
-
-// 寬版採四欄兩列，窄版改成兩欄四列以保留營養素全名的可讀空間。
-const _weeklyGridWideBreakpoint = 720.0;
 
 // 每格保留標題、日期與四項核心營養素換行所需的高度。
 const _weeklyGridTileExtent = 216.0;
@@ -80,7 +78,7 @@ class WeeklyNutritionSummaryCard extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final columnCount =
-                      constraints.maxWidth >= _weeklyGridWideBreakpoint ? 4 : 2;
+                      constraints.maxWidth >= AppBreakpoints.expanded ? 4 : 2;
                   return GridView.builder(
                     key: const Key('weekly-nutrition-grid'),
                     shrinkWrap: true,
