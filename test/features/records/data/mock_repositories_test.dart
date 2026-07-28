@@ -9,7 +9,10 @@ void main() {
     test('searchFoods_WhenQueryMatchesName_ReturnsMatchingFood', () async {
       final repository = MockFoodRepository();
 
-      final foods = await repository.searchFoods(query: '雞胸');
+      final foods = await repository.searchFoods(
+        query: '雞胸',
+        langCode: 'zh-TW',
+      );
 
       expect(foods, hasLength(1));
       expect(foods.single.name, '雞胸肉');
@@ -26,7 +29,11 @@ void main() {
         quantityGrams: 150,
         consumedAt: consumedAt,
       );
-      final records = await repository.getRecordsForDate(consumedAt);
+      final records = await repository.getRecordsForDate(
+        consumedAt,
+        timeZone: 'Asia/Taipei',
+        langCode: 'zh-TW',
+      );
 
       expect(records, hasLength(1));
       expect(records.single.id, created.id);
@@ -43,14 +50,18 @@ void main() {
       );
 
       await repository.deleteRecord(created.id);
-      final records = await repository.getRecordsForDate(consumedAt);
+      final records = await repository.getRecordsForDate(
+        consumedAt,
+        timeZone: 'Asia/Taipei',
+        langCode: 'zh-TW',
+      );
 
       expect(records, isEmpty);
     });
   });
 
   group('MockNutritionRepository', () {
-    test('getSummaryForDate_SumsRecordNutrition', () async {
+    test('getDailySummary_SumsRecordNutrition', () async {
       final dailyRecordRepository = MockDailyRecordRepository(
         initialRecords: [],
       );
@@ -64,12 +75,16 @@ void main() {
         consumedAt: consumedAt,
       );
 
-      final summary = await nutritionRepository.getSummaryForDate(consumedAt);
+      final summary = await nutritionRepository.getDailySummary(
+        date: consumedAt,
+        timeZone: 'Asia/Taipei',
+        langCode: 'zh-TW',
+      );
 
-      expect(summary.calories, closeTo(330, 0.001));
-      expect(summary.protein, closeTo(62, 0.001));
-      expect(summary.fat, closeTo(7.2, 0.001));
-      expect(summary.carbohydrates, closeTo(0, 0.001));
+      expect(summary.nutrient('Calories')?.amount, closeTo(330, 0.001));
+      expect(summary.nutrient('Protein')?.amount, closeTo(62, 0.001));
+      expect(summary.nutrient('Fat')?.amount, closeTo(7.2, 0.001));
+      expect(summary.nutrient('Carbohydrates')?.amount, closeTo(0, 0.001));
     });
   });
 }

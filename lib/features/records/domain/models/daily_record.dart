@@ -4,14 +4,15 @@ import 'nutrition_summary.dart';
 
 /// 一筆使用者飲食紀錄，餐別由食用時間推導。
 class DailyRecord {
-  const DailyRecord({
+  DailyRecord({
     required this.id,
     required this.food,
     required this.quantityGrams,
     required this.consumedAt,
+    required List<NutrientAmount> nutrients,
     this.mealTypeCode,
     this.note,
-  });
+  }) : nutrients = List.unmodifiable(nutrients);
 
   final int id;
   final Food food;
@@ -19,11 +20,10 @@ class DailyRecord {
   final DateTime consumedAt;
   final String? mealTypeCode;
   final String? note;
+  final List<NutrientAmount> nutrients;
 
   MealType get mealType =>
       MealType.fromCode(mealTypeCode) ?? MealType.fromConsumedAt(consumedAt);
 
-  NutritionSummary get nutrition {
-    return food.nutritionPer100Grams.scaledBy(quantityGrams / 100);
-  }
+  NutrientAmount? nutrient(String code) => nutrients.nutrientByCode(code);
 }

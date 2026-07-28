@@ -4,12 +4,31 @@ import '../../../core/api/api_exception.dart';
 import '../../../core/api/antiforgery_request.dart';
 import '../domain/admin_food.dart';
 import '../domain/admin_food_repository.dart';
+import '../domain/nutrient_definition.dart';
 
 /// 封裝管理員食物 CRUD HTTP 契約。
 class ApiAdminFoodRepository implements AdminFoodRepository {
   ApiAdminFoodRepository(this._dio);
 
   final Dio _dio;
+
+  @override
+  Future<List<NutrientDefinition>> getNutrients({
+    required String langCode,
+  }) async {
+    try {
+      final response = await _dio.get<List<Object?>>(
+        '/api/nutrients',
+        queryParameters: {'langCode': langCode},
+      );
+      return [
+        for (final item in response.data ?? const [])
+          _mapNutrientDefinition(Map<String, Object?>.from(item! as Map)),
+      ];
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
 
   @override
   Future<AdminFood> get(int foodId) async {
@@ -92,6 +111,16 @@ class ApiAdminFoodRepository implements AdminFoodRepository {
     return MapEntry(
       nutrient['nutrientCode']! as String,
       (nutrient['amountPer100Grams'] as num).toDouble(),
+    );
+  }
+
+  static NutrientDefinition _mapNutrientDefinition(Map<String, Object?> json) {
+    return NutrientDefinition(
+      nutrientId: (json['nutrientId'] as num).toInt(),
+      code: json['code']! as String,
+      displayName: json['displayName']! as String,
+      langCode: json['langCode'] as String?,
+      unitCode: json['unitCode']! as String,
     );
   }
 

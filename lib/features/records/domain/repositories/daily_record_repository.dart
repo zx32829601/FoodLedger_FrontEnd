@@ -3,7 +3,11 @@ import '../models/food.dart';
 
 /// 使用者飲食紀錄資料來源的抽象介面。
 abstract interface class DailyRecordRepository {
-  Future<List<DailyRecord>> getRecordsForDate(DateTime date);
+  Future<List<DailyRecord>> getRecordsForDate(
+    DateTime date, {
+    required String timeZone,
+    required String langCode,
+  });
 
   Future<DailyRecord> addRecord({
     required Food food,

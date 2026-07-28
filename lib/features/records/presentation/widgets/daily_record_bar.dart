@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_radius.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../domain/models/daily_record.dart';
+import '../../domain/models/nutrient_codes.dart';
+import '../nutrient_amount_formatter.dart';
 
 /// 以獨立圓角 Bar 呈現一筆飲食紀錄。
 class DailyRecordBar extends StatelessWidget {
@@ -90,7 +92,9 @@ class DailyRecordBar extends StatelessWidget {
                     vertical: AppSpacing.extraSmall,
                   ),
                   child: Text(
-                    '${record.nutrition.calories.toStringAsFixed(0)} kcal',
+                    formatNutrientAmount(
+                      record.nutrient(NutrientCodes.calories),
+                    ),
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.w700,

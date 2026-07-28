@@ -7,6 +7,9 @@ import '../../../../app/theme/app_spacing.dart';
 import '../../domain/models/food.dart';
 import '../../domain/models/daily_record.dart';
 import '../../domain/models/meal_type.dart';
+import '../../domain/models/nutrient_codes.dart';
+import '../../domain/models/nutrient_unit_codes.dart';
+import '../nutrient_amount_formatter.dart';
 import '../providers/record_providers.dart';
 
 class AddRecordDialog extends ConsumerStatefulWidget {
@@ -95,8 +98,8 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
                         ).colorScheme.primaryContainer,
                         title: Text(food.name),
                         subtitle: Text(
-                          '${food.nutritionPer100Grams.calories.toStringAsFixed(0)} '
-                          'kcal / 100 克',
+                          '${formatNutrientAmount(food.nutrientPer100Grams(NutrientCodes.calories))} '
+                          '/ 100 克',
                         ),
                         trailing: isSelected
                             ? const Icon(Icons.check_circle)
@@ -123,7 +126,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
                     ),
                     decoration: const InputDecoration(
                       labelText: '份量（克）',
-                      suffixText: 'g',
+                      suffixText: NutrientUnitCodes.gram,
                     ),
                   ),
                 ),

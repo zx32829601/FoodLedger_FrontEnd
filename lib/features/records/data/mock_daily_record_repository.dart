@@ -1,5 +1,6 @@
 import '../domain/models/daily_record.dart';
 import '../domain/models/food.dart';
+import '../domain/models/nutrition_summary.dart';
 import '../domain/repositories/daily_record_repository.dart';
 import 'mock_foods.dart';
 
@@ -19,7 +20,11 @@ class MockDailyRecordRepository implements DailyRecordRepository {
   int _nextId;
 
   @override
-  Future<List<DailyRecord>> getRecordsForDate(DateTime date) async {
+  Future<List<DailyRecord>> getRecordsForDate(
+    DateTime date, {
+    required String timeZone,
+    required String langCode,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 220));
     final records =
         _records.where((record) {
@@ -49,6 +54,7 @@ class MockDailyRecordRepository implements DailyRecordRepository {
       food: food,
       quantityGrams: quantityGrams,
       consumedAt: consumedAt.toUtc(),
+      nutrients: food.nutrientsPer100Grams.scaledBy(quantityGrams / 100),
       mealTypeCode: mealTypeCode,
       note: note,
     );
@@ -78,6 +84,7 @@ class MockDailyRecordRepository implements DailyRecordRepository {
       food: food,
       quantityGrams: quantityGrams,
       consumedAt: consumedAt.toUtc(),
+      nutrients: food.nutrientsPer100Grams.scaledBy(quantityGrams / 100),
       mealTypeCode: mealTypeCode,
       note: note,
     );
@@ -103,24 +110,28 @@ class MockDailyRecordRepository implements DailyRecordRepository {
         food: mockFoods[3],
         quantityGrams: 180,
         consumedAt: consumedAt(8, 10),
+        nutrients: mockFoods[3].nutrientsPer100Grams.scaledBy(1.8),
       ),
       DailyRecord(
         id: 2,
         food: mockFoods[1],
         quantityGrams: 150,
         consumedAt: consumedAt(12, 20),
+        nutrients: mockFoods[1].nutrientsPer100Grams.scaledBy(1.5),
       ),
       DailyRecord(
         id: 3,
         food: mockFoods[0],
         quantityGrams: 200,
         consumedAt: consumedAt(12, 20),
+        nutrients: mockFoods[0].nutrientsPer100Grams.scaledBy(2),
       ),
       DailyRecord(
         id: 4,
         food: mockFoods[4],
         quantityGrams: 120,
         consumedAt: consumedAt(18, 30),
+        nutrients: mockFoods[4].nutrientsPer100Grams.scaledBy(1.2),
       ),
     ];
   }

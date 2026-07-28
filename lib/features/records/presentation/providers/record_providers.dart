@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/localization/localization_providers.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../data/api_daily_record_repository.dart';
 import '../../data/api_food_repository.dart';
@@ -8,6 +9,7 @@ import '../../domain/models/daily_record.dart';
 import '../../domain/models/food.dart';
 import '../../domain/models/meal_type.dart';
 import '../../domain/models/nutrition_summary.dart';
+import '../../domain/models/weekly_nutrition_summary.dart';
 import '../../domain/repositories/daily_record_repository.dart';
 import '../../domain/repositories/food_repository.dart';
 import '../../domain/repositories/nutrition_repository.dart';
@@ -36,6 +38,14 @@ class SelectedDateController extends Notifier<DateTime> {
     state = _dateOnly(state.add(const Duration(days: 1)));
   }
 
+  void previousWeek() {
+    state = _dateOnly(state.subtract(const Duration(days: 7)));
+  }
+
+  void nextWeek() {
+    state = _dateOnly(state.add(const Duration(days: 7)));
+  }
+
   void select(DateTime date) {
     state = _dateOnly(date);
   }
@@ -53,9 +63,12 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
   @override
   Future<List<DailyRecord>> build() {
     final selectedDate = ref.watch(selectedDateProvider);
-    return ref
-        .watch(dailyRecordRepositoryProvider)
-        .getRecordsForDate(selectedDate);
+    return _loadRecords(
+      selectedDate,
+      ref.watch(dailyRecordRepositoryProvider),
+      timeZone: ref.watch(nutritionTimeZoneProvider),
+      langCode: ref.watch(nutritionLangCodeProvider),
+    );
   }
 
   Future<void> addRecord({
@@ -83,9 +96,12 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
             mealTypeCode: mealType.code,
             note: note,
           );
-      return ref
-          .read(dailyRecordRepositoryProvider)
-          .getRecordsForDate(selectedDate);
+      return _loadRecords(
+        selectedDate,
+        ref.read(dailyRecordRepositoryProvider),
+        timeZone: ref.read(nutritionTimeZoneProvider),
+        langCode: ref.read(nutritionLangCodeProvider),
+      );
     });
   }
 
@@ -94,9 +110,12 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await ref.read(dailyRecordRepositoryProvider).deleteRecord(recordId);
-      return ref
-          .read(dailyRecordRepositoryProvider)
-          .getRecordsForDate(selectedDate);
+      return _loadRecords(
+        selectedDate,
+        ref.read(dailyRecordRepositoryProvider),
+        timeZone: ref.read(nutritionTimeZoneProvider),
+        langCode: ref.read(nutritionLangCodeProvider),
+      );
     });
   }
 
@@ -119,10 +138,26 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
             mealTypeCode: mealType.code,
             note: note,
           );
-      return ref
-          .read(dailyRecordRepositoryProvider)
-          .getRecordsForDate(selectedDate);
+      return _loadRecords(
+        selectedDate,
+        ref.read(dailyRecordRepositoryProvider),
+        timeZone: ref.read(nutritionTimeZoneProvider),
+        langCode: ref.read(nutritionLangCodeProvider),
+      );
     });
+  }
+
+  Future<List<DailyRecord>> _loadRecords(
+    DateTime date,
+    DailyRecordRepository repository, {
+    required String timeZone,
+    required String langCode,
+  }) {
+    return repository.getRecordsForDate(
+      date,
+      timeZone: timeZone,
+      langCode: langCode,
+    );
   }
 }
 
@@ -134,12 +169,36 @@ final dailyRecordsProvider =
 final nutritionSummaryProvider = FutureProvider<NutritionSummary>((ref) async {
   await ref.watch(dailyRecordsProvider.future);
   final selectedDate = ref.watch(selectedDateProvider);
-  return ref.watch(nutritionRepositoryProvider).getSummaryForDate(selectedDate);
+  return ref
+      .watch(nutritionRepositoryProvider)
+      .getDailySummary(
+        date: selectedDate,
+        timeZone: ref.watch(nutritionTimeZoneProvider),
+        langCode: ref.watch(nutritionLangCodeProvider),
+      );
+});
+
+final weeklyNutritionSummaryProvider = FutureProvider<WeeklyNutritionSummary>((
+  ref,
+) async {
+  await ref.watch(dailyRecordsProvider.future);
+  return ref
+      .watch(nutritionRepositoryProvider)
+      .getWeeklySummary(
+        date: ref.watch(selectedDateProvider),
+        timeZone: ref.watch(nutritionTimeZoneProvider),
+        langCode: ref.watch(nutritionLangCodeProvider),
+      );
 });
 
 final foodSearchProvider = FutureProvider.family<List<Food>, String>((
   ref,
   query,
 ) {
-  return ref.watch(foodRepositoryProvider).searchFoods(query: query);
+  return ref
+      .watch(foodRepositoryProvider)
+      .searchFoods(
+        query: query,
+        langCode: ref.watch(nutritionLangCodeProvider),
+      );
 });

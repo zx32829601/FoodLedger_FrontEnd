@@ -3,12 +3,16 @@ import '../domain/repositories/food_repository.dart';
 import 'mock_foods.dart';
 
 class MockFoodRepository implements FoodRepository {
-  MockFoodRepository({List<Food> foods = mockFoods}) : _foods = List.of(foods);
+  MockFoodRepository({List<Food>? foods})
+    : _foods = List.of(foods ?? mockFoods);
 
   final List<Food> _foods;
 
   @override
-  Future<List<Food>> searchFoods({required String query}) async {
+  Future<List<Food>> searchFoods({
+    required String query,
+    required String langCode,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 180));
     final normalizedQuery = query.trim().toLowerCase();
 

@@ -428,7 +428,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('香蕉'), findsOneWidget);
-    expect(find.textContaining('107 kcal'), findsOneWidget);
+    expect(find.textContaining('106.8 kcal'), findsOneWidget);
   });
 }
 
