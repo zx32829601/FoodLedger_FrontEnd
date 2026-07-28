@@ -62,6 +62,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
     required Food food,
     required double quantityGrams,
     required MealType mealType,
+    String? note,
   }) async {
     final selectedDate = ref.read(selectedDateProvider);
     final localConsumedAt = DateTime(
@@ -80,6 +81,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
             quantityGrams: quantityGrams,
             consumedAt: localConsumedAt,
             mealTypeCode: mealType.code,
+            note: note,
           );
       return ref
           .read(dailyRecordRepositoryProvider)
@@ -103,6 +105,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
     required Food food,
     required double quantityGrams,
     required MealType mealType,
+    String? note,
   }) async {
     final selectedDate = ref.read(selectedDateProvider);
     state = await AsyncValue.guard(() async {
@@ -114,7 +117,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
             quantityGrams: quantityGrams,
             consumedAt: record.consumedAt,
             mealTypeCode: mealType.code,
-            note: record.note,
+            note: note,
           );
       return ref
           .read(dailyRecordRepositoryProvider)

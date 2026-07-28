@@ -14,7 +14,6 @@ class ApiFoodRepository implements FoodRepository {
   @override
   Future<List<Food>> searchFoods({required String query}) async {
     final normalizedQuery = query.trim();
-    if (normalizedQuery.isEmpty) return const [];
 
     try {
       const pageSize = 100;

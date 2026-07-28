@@ -103,6 +103,7 @@ class DailyRecordBar extends StatelessWidget {
                 IconButton(
                   key: Key('delete-record-${record.id}'),
                   tooltip: '刪除 ${record.food.name}',
+                  color: colorScheme.error,
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete_outline),
                 ),

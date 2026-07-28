@@ -20,6 +20,7 @@ class AddRecordDialog extends ConsumerStatefulWidget {
 
 class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
   late final TextEditingController _quantityController;
+  late final TextEditingController _noteController;
   String _query = '';
   Food? _selectedFood;
   late MealType _mealType;
@@ -32,6 +33,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
     _quantityController = TextEditingController(
       text: widget.initialRecord?.quantityGrams.toString() ?? '100',
     );
+    _noteController = TextEditingController(text: widget.initialRecord?.note);
     _selectedFood = widget.initialRecord?.food;
     _mealType = widget.initialRecord?.mealType ?? MealType.breakfast;
   }
@@ -40,6 +42,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
   void dispose() {
     _debounce?.cancel();
     _quantityController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
@@ -143,6 +146,17 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
                 ),
               ],
             ),
+            const SizedBox(height: AppSpacing.medium),
+            TextField(
+              key: const Key('record-note-field'),
+              controller: _noteController,
+              maxLength: 500,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: '備註',
+                hintText: '例如：公司午餐、少油',
+              ),
+            ),
           ],
         ),
       ),
@@ -182,6 +196,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
             food: _selectedFood!,
             quantityGrams: quantity,
             mealType: _mealType,
+            note: _noteController.text,
           );
     } else {
       await ref
@@ -191,6 +206,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
             food: _selectedFood!,
             quantityGrams: quantity,
             mealType: _mealType,
+            note: _noteController.text,
           );
     }
 

@@ -37,6 +37,21 @@ void main() {
       expect(request.queryParameters['langCode'], 'zh-TW');
       expect(foods.single.nutritionPer100Grams.protein, 31);
     });
+
+    test('空白查詢仍會向 API 載入全部食物', () async {
+      late RequestOptions request;
+      final dio = _dio((options) {
+        request = options;
+        return {'items': <Object?>[]};
+      });
+      addTearDown(dio.close);
+
+      final foods = await ApiFoodRepository(dio).searchFoods(query: '   ');
+
+      expect(request.path, '/api/foods');
+      expect(request.queryParameters['query'], '');
+      expect(foods, isEmpty);
+    });
   });
 
   group('ApiDailyRecordRepository', () {

@@ -50,37 +50,32 @@ class _FoodSearchPageState extends ConsumerState<FoodSearchPage> {
             ),
             const SizedBox(height: AppSpacing.medium),
             Expanded(
-              child: _query.trim().isEmpty
-                  ? const Center(child: Text('輸入關鍵字開始搜尋食物'))
-                  : foods.when(
-                      data: (items) => items.isEmpty
-                          ? const Center(child: Text('找不到符合條件的食物'))
-                          : ListView.separated(
-                              itemCount: items.length,
-                              separatorBuilder: (_, _) =>
-                                  const Divider(height: 1),
-                              itemBuilder: (context, index) {
-                                final food = items[index];
-                                return ListTile(
-                                  title: Text(food.name),
-                                  subtitle: Text(food.code),
-                                  trailing: Text(
-                                    '${food.nutritionPer100Grams.calories.toStringAsFixed(0)} kcal',
-                                  ),
-                                );
-                              },
+              child: foods.when(
+                data: (items) => items.isEmpty
+                    ? const Center(child: Text('找不到符合條件的食物'))
+                    : ListView.separated(
+                        itemCount: items.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final food = items[index];
+                          return ListTile(
+                            title: Text(food.name),
+                            subtitle: Text(food.code),
+                            trailing: Text(
+                              '${food.nutritionPer100Grams.calories.toStringAsFixed(0)} kcal',
                             ),
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (_, _) => Center(
-                        child: FilledButton.icon(
-                          onPressed: () =>
-                              ref.invalidate(foodSearchProvider(_query)),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('重新載入'),
-                        ),
+                          );
+                        },
                       ),
-                    ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, _) => Center(
+                  child: FilledButton.icon(
+                    onPressed: () => ref.invalidate(foodSearchProvider(_query)),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('重新載入'),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

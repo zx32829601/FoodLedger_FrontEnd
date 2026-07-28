@@ -27,12 +27,14 @@ void main() {
           food: mockFoods[1],
           quantityGrams: 100,
           mealType: MealType.lunch,
+          note: '公司午餐',
         );
     final records = await container.read(dailyRecordsProvider.future);
     final summary = await container.read(nutritionSummaryProvider.future);
 
     expect(records, hasLength(1));
     expect(records.single.mealType, MealType.lunch);
+    expect(records.single.note, '公司午餐');
     expect(summary.calories, closeTo(165, 0.001));
     expect(summary.protein, closeTo(31, 0.001));
   });

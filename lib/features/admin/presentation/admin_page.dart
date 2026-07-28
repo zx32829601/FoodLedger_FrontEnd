@@ -64,10 +64,10 @@ class _AdminPageState extends ConsumerState<AdminPage> {
             ),
             const SizedBox(height: AppSpacing.medium),
             Expanded(
-              child: _query.trim().isEmpty
-                  ? const Center(child: Text('輸入食物名稱以載入維護清單'))
-                  : foods.when(
-                      data: (items) => ListView.separated(
+              child: foods.when(
+                data: (items) => items.isEmpty
+                    ? const Center(child: Text('目前沒有符合條件的食物'))
+                    : ListView.separated(
                         itemCount: items.length,
                         separatorBuilder: (_, _) => const Divider(height: 1),
                         itemBuilder: (context, index) {
@@ -76,18 +76,30 @@ class _AdminPageState extends ConsumerState<AdminPage> {
                             title: Text(food.name),
                             subtitle: Text(food.code),
                             onTap: () => _openEditor(food: food),
-                            trailing: IconButton(
-                              tooltip: '刪除',
-                              onPressed: () => _delete(food),
-                              icon: const Icon(Icons.delete_outline),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  key: Key('edit-food-${food.id}'),
+                                  tooltip: '編輯',
+                                  onPressed: () => _openEditor(food: food),
+                                  icon: const Icon(Icons.edit_outlined),
+                                ),
+                                IconButton(
+                                  key: Key('delete-food-${food.id}'),
+                                  tooltip: '刪除',
+                                  color: Theme.of(context).colorScheme.error,
+                                  onPressed: () => _delete(food),
+                                  icon: const Icon(Icons.delete_outline),
+                                ),
+                              ],
                             ),
                           );
                         },
                       ),
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (_, _) => const Center(child: Text('食物資料載入失敗')),
-                    ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, _) => const Center(child: Text('食物資料載入失敗')),
+              ),
             ),
           ],
         ),
@@ -130,6 +142,10 @@ class _AdminPageState extends ConsumerState<AdminPage> {
             child: const Text('取消'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('刪除'),
           ),

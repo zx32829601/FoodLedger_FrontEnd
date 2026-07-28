@@ -423,6 +423,7 @@ void main() {
       find.byKey(const Key('record-quantity-field')),
       '120',
     );
+    await tester.enterText(find.byKey(const Key('record-note-field')), '公司午餐');
     await tester.tap(find.byKey(const Key('save-record-button')));
     await tester.pumpAndSettle();
 
