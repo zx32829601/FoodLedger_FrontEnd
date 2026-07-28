@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../records/domain/models/daily_record.dart';
-import '../../records/presentation/providers/record_providers.dart';
+import '../../records/presentation/widgets/add_record_dialog.dart';
 import '../../records/presentation/widgets/daily_record_bar.dart';
 import '../../records/presentation/widgets/nutrition_summary_card.dart';
+import 'providers/home_providers.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summary = ref.watch(nutritionSummaryProvider);
-    final records = ref.watch(dailyRecordsProvider);
+    final summary = ref.watch(homeNutritionSummaryProvider);
+    final records = ref.watch(homeDailyRecordsProvider);
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -26,7 +25,9 @@ class HomePage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _HomeHeader(onAddRecord: () => context.go(AppRoutes.records)),
+                _HomeHeader(
+                  onAddRecord: () => _showAddRecordDialog(context, ref),
+                ),
                 const SizedBox(height: AppSpacing.large),
                 summary.when(
                   data: (value) => NutritionSummaryCard(summary: value),
@@ -56,6 +57,16 @@ class HomePage extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _showAddRecordDialog(BuildContext context, WidgetRef ref) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AddRecordDialog(
+        recordDate: ref.read(homeTodayProvider),
+        onSaved: () => ref.invalidate(homeDailyRecordsProvider),
       ),
     );
   }
@@ -91,6 +102,7 @@ class _HomeHeader extends StatelessWidget {
           ],
         ),
         FilledButton.icon(
+          key: const Key('home-add-record-button'),
           onPressed: onAddRecord,
           icon: const Icon(Icons.add),
           label: const Text('新增飲食'),

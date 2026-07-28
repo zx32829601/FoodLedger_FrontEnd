@@ -12,10 +12,23 @@ import '../../domain/models/nutrient_unit_codes.dart';
 import '../nutrient_amount_formatter.dart';
 import '../providers/record_providers.dart';
 
+/// 提供飲食紀錄的食物搜尋、新增與編輯流程。
 class AddRecordDialog extends ConsumerStatefulWidget {
-  const AddRecordDialog({this.initialRecord, super.key});
+  const AddRecordDialog({
+    this.initialRecord,
+    this.recordDate,
+    this.onSaved,
+    super.key,
+  });
 
+  /// 編輯模式使用的既有紀錄；未提供時為新增模式。
   final DailyRecord? initialRecord;
+
+  /// 新增模式要寫入的本地日期；未提供時使用飲食紀錄頁選取日期。
+  final DateTime? recordDate;
+
+  /// 紀錄成功儲存後通知開啟視窗的畫面重新整理。
+  final VoidCallback? onSaved;
 
   @override
   ConsumerState<AddRecordDialog> createState() => _AddRecordDialogState();
@@ -200,6 +213,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
             quantityGrams: quantity,
             mealType: _mealType,
             note: _noteController.text,
+            recordDate: widget.recordDate,
           );
     } else {
       await ref
@@ -223,6 +237,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
       return;
     }
 
+    widget.onSaved?.call();
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

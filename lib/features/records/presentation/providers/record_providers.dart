@@ -71,17 +71,22 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
     );
   }
 
+  /// 新增飲食紀錄；未指定 [recordDate] 時沿用飲食紀錄頁目前選取的日期。
   Future<void> addRecord({
     required Food food,
     required double quantityGrams,
     required MealType mealType,
     String? note,
+    DateTime? recordDate,
   }) async {
     final selectedDate = ref.read(selectedDateProvider);
+    final targetDate = recordDate == null
+        ? selectedDate
+        : DateTime(recordDate.year, recordDate.month, recordDate.day);
     final localConsumedAt = DateTime(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
+      targetDate.year,
+      targetDate.month,
+      targetDate.day,
       mealType.defaultHour,
     );
 
