@@ -83,16 +83,18 @@ class NutritionSummaryCard extends StatelessWidget {
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: AppSpacing.small),
-              Wrap(
-                spacing: AppSpacing.small,
-                runSpacing: AppSpacing.small,
+              Column(
                 children: [
                   for (final meal in summary.mealTypes)
-                    _MealTypeDetails(
-                      label:
-                          MealType.fromCode(meal.mealTypeCode)?.label ??
-                          meal.mealTypeCode,
-                      totals: meal.totals,
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.small),
+                      child: _MealTypeBanner(
+                        mealTypeCode: meal.mealTypeCode,
+                        label:
+                            MealType.fromCode(meal.mealTypeCode)?.label ??
+                            meal.mealTypeCode,
+                        totals: meal.totals,
+                      ),
                     ),
                 ],
               ),
@@ -104,39 +106,91 @@ class NutritionSummaryCard extends StatelessWidget {
   }
 }
 
-class _MealTypeDetails extends StatelessWidget {
-  const _MealTypeDetails({required this.label, required this.totals});
+class _MealTypeBanner extends StatelessWidget {
+  const _MealTypeBanner({
+    required this.mealTypeCode,
+    required this.label,
+    required this.totals,
+  });
 
+  final String mealTypeCode;
   final String label;
   final List<NutrientAmount> totals;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.small),
+      key: Key('meal-banner-$mealTypeCode'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.medium),
       decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(AppSpacing.small),
+        borderRadius: BorderRadius.circular(AppSpacing.medium),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              Icon(
+                Icons.restaurant_outlined,
+                size: 18,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: AppSpacing.extraSmall),
+              Text(
+                label,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
           ),
-          for (final code in NutrientCodes.core) Text(_mealNutrientText(code)),
+          const SizedBox(height: AppSpacing.small),
+          Wrap(
+            spacing: AppSpacing.large,
+            runSpacing: AppSpacing.small,
+            children: [
+              for (final code in NutrientCodes.core)
+                _MealNutrientMetric(
+                  nutrient: totals.nutrientByCode(code),
+                  fallbackLabel: fallbackNutrientLabel(code),
+                ),
+            ],
+          ),
         ],
       ),
     );
   }
+}
 
-  String _mealNutrientText(String code) {
-    final nutrient = totals.nutrientByCode(code);
-    return '${nutrient?.displayName ?? fallbackNutrientLabel(code)} '
-        '${formatNutrientAmount(nutrient)}';
+class _MealNutrientMetric extends StatelessWidget {
+  const _MealNutrientMetric({
+    required this.nutrient,
+    required this.fallbackLabel,
+  });
+
+  final NutrientAmount? nutrient;
+  final String fallbackLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          nutrient?.displayName ?? fallbackLabel,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        Text(
+          formatNutrientAmount(nutrient),
+          style: Theme.of(
+            context,
+          ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
   }
 }
 

@@ -48,7 +48,7 @@ void main() {
   test('核心營養素備援標籤由單一對照表提供', () {
     expect(fallbackNutrientLabel(NutrientCodes.calories), '熱量');
     expect(fallbackNutrientLabel(NutrientCodes.protein), '蛋白質');
-    expect(shortNutrientLabel(NutrientCodes.fat), '脂');
+    expect(fallbackNutrientLabel(NutrientCodes.fat), '脂肪');
     expect(fallbackNutrientLabel('Iron'), 'Iron');
   });
 }

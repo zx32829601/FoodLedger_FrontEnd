@@ -10,14 +10,3 @@ String fallbackNutrientLabel(String code) {
     _ => code,
   };
 }
-
-/// 每日明細空間有限，核心營養素使用一致的短標籤。
-String shortNutrientLabel(String code) {
-  return switch (code) {
-    NutrientCodes.calories => '熱',
-    NutrientCodes.protein => '蛋',
-    NutrientCodes.fat => '脂',
-    NutrientCodes.carbohydrates => '碳',
-    _ => code,
-  };
-}
