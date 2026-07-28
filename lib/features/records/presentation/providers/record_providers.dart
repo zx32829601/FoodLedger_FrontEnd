@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/localization/iana_local_date.dart';
 import '../../../../core/localization/localization_providers.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../data/api_daily_record_repository.dart';
@@ -104,11 +105,10 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
         ? selectedDate
         : DateTime(recordDate.year, recordDate.month, recordDate.day);
     final existingRecords = state.value ?? const <DailyRecord>[];
-    final localConsumedAt = DateTime(
-      targetDate.year,
-      targetDate.month,
-      targetDate.day,
+    final localConsumedAt = localDateTimeInTimeZone(
+      targetDate,
       mealType.defaultHour,
+      selectedDateQuery.timeZone,
     );
 
     state = const AsyncLoading();

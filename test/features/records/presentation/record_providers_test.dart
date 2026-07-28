@@ -95,6 +95,28 @@ void main() {
     expect(container.read(dailyRecordsProvider).hasError, isFalse);
   });
 
+  test('指定紀錄日期時會用 Nutrition IANA 時區建立飲食時間', () async {
+    final repository = _RecordingConsumedAtRepository();
+    final container = ProviderContainer(
+      overrides: [dailyRecordRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    container
+        .read(nutritionTimeZoneProvider.notifier)
+        .select('America/New_York');
+
+    await container
+        .read(dailyRecordsProvider.notifier)
+        .addRecord(
+          food: mockFoods[1],
+          quantityGrams: 100,
+          mealType: MealType.lunch,
+          recordDate: DateTime(2026, 7, 28),
+        );
+
+    expect(repository.lastConsumedAt?.toUtc(), DateTime.utc(2026, 7, 28, 16));
+  });
+
   test('SelectedDateController 以前後七天切換週期', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
@@ -107,6 +129,30 @@ void main() {
     controller.nextWeek();
     expect(container.read(selectedDateProvider), DateTime(2026, 7, 29));
   });
+}
+
+class _RecordingConsumedAtRepository extends MockDailyRecordRepository {
+  _RecordingConsumedAtRepository() : super(initialRecords: []);
+
+  DateTime? lastConsumedAt;
+
+  @override
+  Future<DailyRecord> addRecord({
+    required Food food,
+    required double quantityGrams,
+    required DateTime consumedAt,
+    String mealTypeCode = 'Snack',
+    String? note,
+  }) {
+    lastConsumedAt = consumedAt;
+    return super.addRecord(
+      food: food,
+      quantityGrams: quantityGrams,
+      consumedAt: consumedAt,
+      mealTypeCode: mealTypeCode,
+      note: note,
+    );
+  }
 }
 
 class _FailingReadDailyRecordRepository extends MockDailyRecordRepository {

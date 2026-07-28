@@ -12,6 +12,17 @@ DateTime localDateInTimeZone(DateTime instant, String timeZoneName) {
   return DateTime(localDateTime.year, localDateTime.month, localDateTime.day);
 }
 
+/// 在指定 IANA 時區建立某日的當地時間。
+DateTime localDateTimeInTimeZone(DateTime date, int hour, String timeZoneName) {
+  return time_zone.TZDateTime(
+    _location(timeZoneName),
+    date.year,
+    date.month,
+    date.day,
+    hour,
+  );
+}
+
 /// 計算指定 IANA 時區距離下一個當地日的實際時間。
 ///
 /// 使用時區資料庫建立隔日零時，因此日光節約時間切換日也不會固定假設為
