@@ -9,7 +9,18 @@ abstract interface class DailyRecordRepository {
     required Food food,
     required double quantityGrams,
     required DateTime consumedAt,
+    String mealTypeCode = 'Snack',
+    String? note,
   });
 
   Future<void> deleteRecord(int recordId);
+
+  Future<void> updateRecord({
+    required int recordId,
+    required Food food,
+    required double quantityGrams,
+    required DateTime consumedAt,
+    required String mealTypeCode,
+    String? note,
+  });
 }

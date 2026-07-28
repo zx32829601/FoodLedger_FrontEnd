@@ -36,6 +36,8 @@ class MockDailyRecordRepository implements DailyRecordRepository {
     required Food food,
     required double quantityGrams,
     required DateTime consumedAt,
+    String mealTypeCode = 'Snack',
+    String? note,
   }) async {
     if (quantityGrams <= 0) {
       throw ArgumentError.value(quantityGrams, 'quantityGrams', '份量必須大於 0');
@@ -47,6 +49,8 @@ class MockDailyRecordRepository implements DailyRecordRepository {
       food: food,
       quantityGrams: quantityGrams,
       consumedAt: consumedAt.toUtc(),
+      mealTypeCode: mealTypeCode,
+      note: note,
     );
     _records.add(record);
     return record;
@@ -56,6 +60,27 @@ class MockDailyRecordRepository implements DailyRecordRepository {
   Future<void> deleteRecord(int recordId) async {
     await Future<void>.delayed(const Duration(milliseconds: 180));
     _records.removeWhere((record) => record.id == recordId);
+  }
+
+  @override
+  Future<void> updateRecord({
+    required int recordId,
+    required Food food,
+    required double quantityGrams,
+    required DateTime consumedAt,
+    required String mealTypeCode,
+    String? note,
+  }) async {
+    final index = _records.indexWhere((record) => record.id == recordId);
+    if (index < 0) return;
+    _records[index] = DailyRecord(
+      id: recordId,
+      food: food,
+      quantityGrams: quantityGrams,
+      consumedAt: consumedAt.toUtc(),
+      mealTypeCode: mealTypeCode,
+      note: note,
+    );
   }
 
   static bool _isSameLocalDate(DateTime left, DateTime right) {

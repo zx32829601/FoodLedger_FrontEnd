@@ -25,6 +25,11 @@ const appDestinations = [
     selectedIcon: Icons.receipt_long,
   ),
   AppDestination(
+    label: '食物',
+    icon: Icons.search_outlined,
+    selectedIcon: Icons.search,
+  ),
+  AppDestination(
     label: '會員',
     icon: Icons.person_outline,
     selectedIcon: Icons.person,

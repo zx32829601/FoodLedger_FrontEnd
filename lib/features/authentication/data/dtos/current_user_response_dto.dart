@@ -9,6 +9,7 @@ class CurrentUserResponseDto {
     required this.userAccount,
     required this.displayName,
     required this.email,
+    this.isAdmin = false,
   });
 
   factory CurrentUserResponseDto.fromJson(Object? value) {
@@ -17,6 +18,7 @@ class CurrentUserResponseDto {
     final userAccount = json['userAccount'];
     final displayName = json['displayName'];
     final email = json['email'];
+    final isAdmin = json['isAdmin'];
     if (userId is! num ||
         userAccount is! String ||
         displayName is! String ||
@@ -29,6 +31,7 @@ class CurrentUserResponseDto {
       userAccount: userAccount,
       displayName: displayName,
       email: email,
+      isAdmin: isAdmin is bool && isAdmin,
     );
   }
 
@@ -36,6 +39,7 @@ class CurrentUserResponseDto {
   final String userAccount;
   final String displayName;
   final String email;
+  final bool isAdmin;
 
   AppUser toDomain() {
     return AppUser(
@@ -43,8 +47,7 @@ class CurrentUserResponseDto {
       userAccount: userAccount,
       displayName: displayName,
       email: email,
-      // 目前 Auth API 尚未回傳角色；管理功能仍由後端 policy 保護。
-      isAdmin: false,
+      isAdmin: isAdmin,
     );
   }
 }

@@ -231,6 +231,12 @@ class _RecordsByMeal extends ConsumerWidget {
                   context,
                 ).showSnackBar(const SnackBar(content: Text('紀錄已刪除')));
               },
+              onEdit: (record) async {
+                await showDialog<void>(
+                  context: context,
+                  builder: (context) => AddRecordDialog(initialRecord: record),
+                );
+              },
             ),
             const SizedBox(height: AppSpacing.medium),
           ],
@@ -244,11 +250,13 @@ class _MealSection extends StatelessWidget {
     required this.mealType,
     required this.records,
     required this.onDelete,
+    required this.onEdit,
   });
 
   final MealType mealType;
   final List<DailyRecord> records;
   final ValueChanged<int> onDelete;
+  final ValueChanged<DailyRecord> onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -271,6 +279,7 @@ class _MealSection extends StatelessWidget {
             return DailyRecordBar(
               record: record,
               onDelete: () => onDelete(record.id),
+              onEdit: () => onEdit(record),
             );
           },
           separatorBuilder: (context, index) =>

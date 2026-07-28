@@ -9,14 +9,19 @@ class DailyRecord {
     required this.food,
     required this.quantityGrams,
     required this.consumedAt,
+    this.mealTypeCode,
+    this.note,
   });
 
   final int id;
   final Food food;
   final double quantityGrams;
   final DateTime consumedAt;
+  final String? mealTypeCode;
+  final String? note;
 
-  MealType get mealType => MealType.fromConsumedAt(consumedAt);
+  MealType get mealType =>
+      MealType.fromCode(mealTypeCode) ?? MealType.fromConsumedAt(consumedAt);
 
   NutritionSummary get nutrition {
     return food.nutritionPer100Grams.scaledBy(quantityGrams / 100);

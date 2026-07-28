@@ -10,12 +10,14 @@ class DailyRecordBar extends StatelessWidget {
     required this.record,
     this.showMealType = false,
     this.onDelete,
+    this.onEdit,
     super.key,
   });
 
   final DailyRecord record;
   final bool showMealType;
   final VoidCallback? onDelete;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -101,10 +103,18 @@ class DailyRecordBar extends StatelessWidget {
                 IconButton(
                   key: Key('delete-record-${record.id}'),
                   tooltip: '刪除 ${record.food.name}',
+                  color: colorScheme.error,
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete_outline),
                 ),
               ],
+              if (onEdit != null)
+                IconButton(
+                  key: Key('edit-record-${record.id}'),
+                  tooltip: '編輯 ${record.food.name}',
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                ),
             ],
           ),
         ),

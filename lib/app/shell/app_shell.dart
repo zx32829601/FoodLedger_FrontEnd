@@ -29,7 +29,7 @@ class AppShell extends ConsumerWidget {
     );
     final destinations = isAdmin
         ? appDestinations
-        : appDestinations.take(3).toList(growable: false);
+        : appDestinations.take(4).toList(growable: false);
 
     return LayoutBuilder(
       builder: (context, constraints) {

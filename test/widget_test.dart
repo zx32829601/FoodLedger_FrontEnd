@@ -10,6 +10,10 @@ import 'package:food_ledger_frontend/features/authentication/data/mock_auth_repo
 import 'package:food_ledger_frontend/features/authentication/domain/models/app_user.dart';
 import 'package:food_ledger_frontend/features/authentication/domain/repositories/auth_repository.dart';
 import 'package:food_ledger_frontend/features/authentication/presentation/providers/auth_providers.dart';
+import 'package:food_ledger_frontend/features/records/data/mock_daily_record_repository.dart';
+import 'package:food_ledger_frontend/features/records/data/mock_food_repository.dart';
+import 'package:food_ledger_frontend/features/records/data/mock_nutrition_repository.dart';
+import 'package:food_ledger_frontend/features/records/presentation/providers/record_providers.dart';
 import 'package:food_ledger_frontend/features/records/presentation/widgets/daily_record_bar.dart';
 
 void main() {
@@ -36,6 +40,7 @@ void main() {
     bool restoreSessionOnStart = false,
     bool settle = true,
   }) async {
+    final dailyRecordRepository = MockDailyRecordRepository();
     tester.view.physicalSize = surfaceSize;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -53,6 +58,13 @@ void main() {
           ),
           restoreSessionOnStartProvider.overrideWithValue(
             restoreSessionOnStart,
+          ),
+          foodRepositoryProvider.overrideWithValue(MockFoodRepository()),
+          dailyRecordRepositoryProvider.overrideWithValue(
+            dailyRecordRepository,
+          ),
+          nutritionRepositoryProvider.overrideWithValue(
+            MockNutritionRepository(dailyRecordRepository),
           ),
         ],
         child: const FoodLedgerApp(),
@@ -404,12 +416,14 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byKey(const Key('food-search-field')), '香蕉');
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('food-option-6')));
     await tester.enterText(
       find.byKey(const Key('record-quantity-field')),
       '120',
     );
+    await tester.enterText(find.byKey(const Key('record-note-field')), '公司午餐');
     await tester.tap(find.byKey(const Key('save-record-button')));
     await tester.pumpAndSettle();
 

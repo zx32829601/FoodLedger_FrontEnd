@@ -19,6 +19,20 @@ enum MealType {
     MealType.snack => 15,
   };
 
+  String get code => switch (this) {
+    MealType.breakfast => 'Breakfast',
+    MealType.lunch => 'Lunch',
+    MealType.dinner => 'Dinner',
+    MealType.snack => 'Snack',
+  };
+
+  static MealType? fromCode(String? code) {
+    for (final mealType in values) {
+      if (mealType.code == code) return mealType;
+    }
+    return null;
+  }
+
   static MealType fromConsumedAt(DateTime consumedAt) {
     final hour = consumedAt.toLocal().hour;
 
