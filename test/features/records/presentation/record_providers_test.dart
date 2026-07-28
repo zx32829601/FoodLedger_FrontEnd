@@ -73,7 +73,7 @@ void main() {
     },
   );
 
-  test('新增成功後不會因紀錄頁日期重新載入失敗而誤報失敗', () async {
+  test('新增成功後重新載入失敗不會讓新增操作失敗且保留錯誤狀態', () async {
     final repository = _FailingReadDailyRecordRepository();
     final container = ProviderContainer(
       overrides: [dailyRecordRepositoryProvider.overrideWithValue(repository)],
@@ -83,16 +83,19 @@ void main() {
         .read(selectedDateProvider.notifier)
         .select(DateTime(2025, 12, 15));
 
-    await container
-        .read(dailyRecordsProvider.notifier)
-        .addRecord(
-          food: mockFoods[1],
-          quantityGrams: 100,
-          mealType: MealType.lunch,
-          recordDate: DateTime(2026, 7, 28),
-        );
+    await expectLater(
+      container
+          .read(dailyRecordsProvider.notifier)
+          .addRecord(
+            food: mockFoods[1],
+            quantityGrams: 100,
+            mealType: MealType.lunch,
+            recordDate: DateTime(2026, 7, 28),
+          ),
+      completes,
+    );
 
-    expect(container.read(dailyRecordsProvider).hasError, isFalse);
+    expect(container.read(dailyRecordsProvider).hasError, isTrue);
   });
 
   test('指定紀錄日期時會用 Nutrition IANA 時區建立飲食時間', () async {
@@ -117,6 +120,29 @@ void main() {
     expect(repository.lastConsumedAt?.toUtc(), DateTime.utc(2026, 7, 28, 16));
   });
 
+  test('新增 API 失敗會回傳操作錯誤', () async {
+    final container = ProviderContainer(
+      overrides: [
+        dailyRecordRepositoryProvider.overrideWithValue(
+          _FailingAddDailyRecordRepository(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container
+          .read(dailyRecordsProvider.notifier)
+          .addRecord(
+            food: mockFoods[1],
+            quantityGrams: 100,
+            mealType: MealType.lunch,
+          ),
+      throwsA(isA<Exception>()),
+    );
+    expect(container.read(dailyRecordsProvider).hasError, isTrue);
+  });
+
   test('SelectedDateController 以前後七天切換週期', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
@@ -129,6 +155,21 @@ void main() {
     controller.nextWeek();
     expect(container.read(selectedDateProvider), DateTime(2026, 7, 29));
   });
+}
+
+class _FailingAddDailyRecordRepository extends MockDailyRecordRepository {
+  _FailingAddDailyRecordRepository() : super(initialRecords: []);
+
+  @override
+  Future<DailyRecord> addRecord({
+    required Food food,
+    required double quantityGrams,
+    required DateTime consumedAt,
+    String mealTypeCode = 'Snack',
+    String? note,
+  }) async {
+    throw Exception('add failed');
+  }
 }
 
 class _RecordingConsumedAtRepository extends MockDailyRecordRepository {

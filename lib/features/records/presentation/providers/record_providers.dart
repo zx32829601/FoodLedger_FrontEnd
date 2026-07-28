@@ -104,7 +104,6 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
     final targetDate = recordDate == null
         ? selectedDate
         : DateTime(recordDate.year, recordDate.month, recordDate.day);
-    final existingRecords = state.value ?? const <DailyRecord>[];
     final localConsumedAt = localDateTimeInTimeZone(
       targetDate,
       mealType.defaultHour,
@@ -112,7 +111,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
     );
 
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
+    try {
       await ref
           .read(dailyRecordRepositoryProvider)
           .addRecord(
@@ -122,16 +121,18 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
             mealTypeCode: mealType.code,
             note: note,
           );
-      try {
-        return await _loadRecords(
-          selectedDateQuery.date,
-          ref.read(dailyRecordRepositoryProvider),
-          timeZone: selectedDateQuery.timeZone,
-          langCode: selectedDateQuery.langCode,
-        );
-      } on Exception {
-        return existingRecords;
-      }
+    } on Object catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+
+    state = await AsyncValue.guard(() {
+      return _loadRecords(
+        selectedDateQuery.date,
+        ref.read(dailyRecordRepositoryProvider),
+        timeZone: selectedDateQuery.timeZone,
+        langCode: selectedDateQuery.langCode,
+      );
     });
   }
 

@@ -205,16 +205,21 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
     }
 
     setState(() => _isSubmitting = true);
+    var mutationFailed = false;
     if (widget.initialRecord == null) {
-      await ref
-          .read(dailyRecordsProvider.notifier)
-          .addRecord(
-            food: _selectedFood!,
-            quantityGrams: quantity,
-            mealType: _mealType,
-            note: _noteController.text,
-            recordDate: widget.recordDate,
-          );
+      try {
+        await ref
+            .read(dailyRecordsProvider.notifier)
+            .addRecord(
+              food: _selectedFood!,
+              quantityGrams: quantity,
+              mealType: _mealType,
+              note: _noteController.text,
+              recordDate: widget.recordDate,
+            );
+      } on Object {
+        mutationFailed = true;
+      }
     } else {
       await ref
           .read(dailyRecordsProvider.notifier)
@@ -225,11 +230,11 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
             mealType: _mealType,
             note: _noteController.text,
           );
+      mutationFailed = ref.read(dailyRecordsProvider).hasError;
     }
 
     if (!mounted) return;
-    final result = ref.read(dailyRecordsProvider);
-    if (result.hasError) {
+    if (mutationFailed) {
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(
         context,
