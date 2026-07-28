@@ -2,15 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_spacing.dart';
+import '../../../core/localization/localization_providers.dart';
 import '../../authentication/presentation/providers/auth_providers.dart';
+import '../../records/data/api_food_repository.dart';
 import '../../records/domain/models/food.dart';
-import '../../records/presentation/providers/record_providers.dart';
+import '../../records/domain/repositories/food_repository.dart';
 import '../data/admin_food_api.dart';
 import '../domain/admin_food.dart';
 import '../domain/admin_food_repository.dart';
+import '../domain/nutrient_definition.dart';
 
 final adminFoodRepositoryProvider = Provider<AdminFoodRepository>((ref) {
   return ApiAdminFoodRepository(ref.watch(apiClientProvider).dio);
+});
+
+final adminFoodSearchRepositoryProvider = Provider<FoodRepository>((ref) {
+  return ApiFoodRepository(ref.watch(apiClientProvider).dio);
+});
+
+final adminFoodSearchProvider = FutureProvider.family<List<Food>, String>((
+  ref,
+  query,
+) {
+  return ref
+      .watch(adminFoodSearchRepositoryProvider)
+      .searchFoods(
+        query: query,
+        langCode: ref.watch(nutritionLangCodeProvider),
+      );
+});
+
+final adminNutrientsProvider = FutureProvider<List<NutrientDefinition>>((ref) {
+  return ref
+      .watch(adminFoodRepositoryProvider)
+      .getNutrients(langCode: ref.watch(nutritionLangCodeProvider));
 });
 
 /// 管理員搜尋、建立、修改與刪除食物的維護頁。
@@ -26,7 +51,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
 
   @override
   Widget build(BuildContext context) {
-    final foods = ref.watch(foodSearchProvider(_query));
+    final foods = ref.watch(adminFoodSearchProvider(_query));
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.large),
@@ -48,6 +73,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
                   ),
                 ),
                 FilledButton.icon(
+                  key: const Key('create-food-button'),
                   onPressed: () => _openEditor(),
                   icon: const Icon(Icons.add),
                   label: const Text('建立食物'),
@@ -126,7 +152,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
       builder: (context) => _FoodEditorDialog(initial: initial),
     );
     if (saved == true) {
-      ref.invalidate(foodSearchProvider(_query));
+      ref.invalidate(adminFoodSearchProvider(_query));
     }
   }
 
@@ -155,7 +181,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
     if (confirmed != true) return;
     try {
       await ref.read(adminFoodRepositoryProvider).delete(food.id);
-      ref.invalidate(foodSearchProvider(_query));
+      ref.invalidate(adminFoodSearchProvider(_query));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -183,14 +209,14 @@ class _FoodEditorDialogState extends ConsumerState<_FoodEditorDialog> {
   @override
   void initState() {
     super.initState();
+    final langCode = ref.read(nutritionLangCodeProvider);
     _code = TextEditingController(text: widget.initial?.code);
-    _name = TextEditingController(text: widget.initial?.displayName);
-    _nutrients = {
-      for (final code in ['Calories', 'Protein', 'Carbohydrates', 'Fat'])
-        code: TextEditingController(
-          text: widget.initial?.nutrients[code]?.toString() ?? '0',
-        ),
-    };
+    _name = TextEditingController(
+      text:
+          widget.initial?.translations[langCode]?.displayName ??
+          widget.initial?.displayName,
+    );
+    _nutrients = {};
   }
 
   @override
@@ -205,6 +231,7 @@ class _FoodEditorDialogState extends ConsumerState<_FoodEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final nutrientDefinitions = ref.watch(adminNutrientsProvider);
     return AlertDialog(
       title: Text(widget.initial == null ? '建立食物' : '編輯食物'),
       content: SizedBox(
@@ -213,28 +240,44 @@ class _FoodEditorDialogState extends ConsumerState<_FoodEditorDialog> {
           child: Column(
             children: [
               TextField(
+                key: const Key('food-code-field'),
                 controller: _code,
                 decoration: const InputDecoration(labelText: '食物代碼'),
               ),
               const SizedBox(height: AppSpacing.small),
               TextField(
+                key: const Key('food-name-field'),
                 controller: _name,
                 decoration: const InputDecoration(labelText: '繁體中文名稱'),
               ),
               const SizedBox(height: AppSpacing.medium),
-              for (final entry in _nutrients.entries)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.small),
-                  child: TextField(
-                    controller: entry.value,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
+              ...nutrientDefinitions.when(
+                data: (items) => [
+                  for (final nutrient in items)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.small),
+                      child: TextField(
+                        key: Key('nutrient-${nutrient.code}'),
+                        controller: _nutrientController(nutrient.code),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText:
+                              '${nutrient.displayName}'
+                              '（${nutrient.unitCode}／每 100 克）',
+                        ),
+                      ),
                     ),
-                    decoration: InputDecoration(
-                      labelText: '${entry.key}（每 100 克）',
-                    ),
+                ],
+                loading: () => [
+                  const Padding(
+                    padding: EdgeInsets.all(AppSpacing.medium),
+                    child: CircularProgressIndicator(),
                   ),
-                ),
+                ],
+                error: (error, stackTrace) => [const Text('營養素目錄載入失敗，請稍後重試。')],
+              ),
             ],
           ),
         ),
@@ -245,7 +288,8 @@ class _FoodEditorDialogState extends ConsumerState<_FoodEditorDialog> {
           child: const Text('取消'),
         ),
         FilledButton(
-          onPressed: _saving ? null : _save,
+          key: const Key('save-food-button'),
+          onPressed: _saving || !nutrientDefinitions.hasValue ? null : _save,
           child: _saving
               ? const SizedBox.square(
                   dimension: 18,
@@ -257,12 +301,25 @@ class _FoodEditorDialogState extends ConsumerState<_FoodEditorDialog> {
     );
   }
 
+  TextEditingController _nutrientController(String code) {
+    return _nutrients.putIfAbsent(
+      code,
+      () => TextEditingController(
+        text: widget.initial?.nutrients[code]?.toString() ?? '',
+      ),
+    );
+  }
+
   Future<void> _save() async {
     final nutrientValues = <String, double>{};
-    for (final entry in _nutrients.entries) {
-      final value = double.tryParse(entry.value.text.trim());
+    final definitions = ref.read(adminNutrientsProvider).value;
+    if (definitions == null) return;
+    for (final definition in definitions) {
+      final rawValue = _nutrientController(definition.code).text.trim();
+      if (rawValue.isEmpty) continue;
+      final value = double.tryParse(rawValue);
       if (value == null || value < 0) return;
-      nutrientValues[entry.key] = value;
+      nutrientValues[definition.code] = value;
     }
     if (_code.text.trim().isEmpty || _name.text.trim().isEmpty) return;
 
@@ -271,9 +328,10 @@ class _FoodEditorDialogState extends ConsumerState<_FoodEditorDialog> {
       final translations = Map<String, AdminFoodTranslation>.from(
         widget.initial?.translations ?? const {},
       );
-      translations['zh-TW'] = AdminFoodTranslation(
+      final langCode = ref.read(nutritionLangCodeProvider);
+      translations[langCode] = AdminFoodTranslation(
         displayName: _name.text,
-        description: translations['zh-TW']?.description ?? '',
+        description: translations[langCode]?.description ?? '',
       );
       await ref
           .read(adminFoodRepositoryProvider)

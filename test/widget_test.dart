@@ -403,16 +403,17 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testWidgets('使用者可以搜尋食物並新增飲食紀錄', (tester) async {
+  testWidgets('使用者可從首頁直接搜尋食物並新增今天的飲食紀錄', (tester) async {
     await pumpApp(tester, surfaceSize: const Size(390, 844));
-
-    final recordsDestination = find.descendant(
-      of: find.byType(NavigationBar),
-      matching: find.text('紀錄'),
+    final container = ProviderScope.containerOf(
+      tester.element(find.byKey(const Key('home-add-record-button'))),
     );
-    await tester.tap(recordsDestination);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('add-record-button')));
+    container
+        .read(selectedDateProvider.notifier)
+        .select(DateTime(2025, 12, 15));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('home-add-record-button')));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byKey(const Key('food-search-field')), '香蕉');
@@ -427,8 +428,9 @@ void main() {
     await tester.tap(find.byKey(const Key('save-record-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('香蕉'), findsOneWidget);
-    expect(find.textContaining('107 kcal'), findsOneWidget);
+    expect(find.text('飲食紀錄已新增'), findsOneWidget);
+    expect(find.textContaining('818.3 kcal'), findsOneWidget);
+    expect(container.read(selectedDateProvider), DateTime(2025, 12, 15));
   });
 }
 

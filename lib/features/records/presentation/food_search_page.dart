@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_spacing.dart';
+import '../domain/models/nutrient_codes.dart';
+import 'nutrient_amount_formatter.dart';
 import 'providers/record_providers.dart';
 
 /// 提供一般使用者獨立瀏覽正式食物搜尋結果的頁面。
@@ -62,7 +64,11 @@ class _FoodSearchPageState extends ConsumerState<FoodSearchPage> {
                             title: Text(food.name),
                             subtitle: Text(food.code),
                             trailing: Text(
-                              '${food.nutritionPer100Grams.calories.toStringAsFixed(0)} kcal',
+                              formatNutrientAmount(
+                                food.nutrientPer100Grams(
+                                  NutrientCodes.calories,
+                                ),
+                              ),
                             ),
                           );
                         },

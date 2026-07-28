@@ -12,7 +12,10 @@ class ApiFoodRepository implements FoodRepository {
   final Dio _dio;
 
   @override
-  Future<List<Food>> searchFoods({required String query}) async {
+  Future<List<Food>> searchFoods({
+    required String query,
+    required String langCode,
+  }) async {
     final normalizedQuery = query.trim();
 
     try {
@@ -25,7 +28,7 @@ class ApiFoodRepository implements FoodRepository {
           '/api/foods',
           queryParameters: {
             'query': normalizedQuery,
-            'langCode': 'zh-TW',
+            'langCode': langCode,
             'page': page,
             'pageSize': pageSize,
           },
@@ -46,30 +49,38 @@ class ApiFoodRepository implements FoodRepository {
 
   static Food _mapFood(Object? value) {
     final json = Map<String, Object?>.from(value! as Map);
-    final nutrients = json['nutrients'] is List
+    final rawNutrients = json['nutrients'] is List
         ? json['nutrients']! as List
         : const [];
-    double amount(String code) {
-      for (final item in nutrients) {
-        final nutrient = Map<String, Object?>.from(item! as Map);
-        if (nutrient['code'] == code) {
-          return (nutrient['amountPer100Grams'] as num).toDouble();
-        }
-      }
-      return 0;
-    }
+    final langCode = json['langCode'] as String?;
 
     return Food(
       id: (json['foodId'] as num).toInt(),
       code: json['foodCode']! as String,
       name: json['displayName']! as String,
       description: '',
-      nutritionPer100Grams: NutritionSummary(
-        calories: amount('Calories'),
-        protein: amount('Protein'),
-        fat: amount('Fat'),
-        carbohydrates: amount('Carbohydrates'),
-      ),
+      langCode: langCode,
+      nutrientsPer100Grams: [
+        for (final item in rawNutrients)
+          _mapNutrient(
+            Map<String, Object?>.from(item! as Map),
+            fallbackLangCode: langCode,
+          ),
+      ],
+    );
+  }
+
+  static NutrientAmount _mapNutrient(
+    Map<String, Object?> json, {
+    required String? fallbackLangCode,
+  }) {
+    return NutrientAmount(
+      nutrientId: (json['nutrientId'] as num?)?.toInt() ?? 0,
+      code: json['code']! as String,
+      displayName: json['displayName']! as String,
+      langCode: json['langCode'] as String? ?? fallbackLangCode,
+      amount: (json['amountPer100Grams'] as num).toDouble(),
+      unitCode: json['unitCode']! as String,
     );
   }
 }

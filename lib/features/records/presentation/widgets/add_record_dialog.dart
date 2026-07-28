@@ -7,12 +7,28 @@ import '../../../../app/theme/app_spacing.dart';
 import '../../domain/models/food.dart';
 import '../../domain/models/daily_record.dart';
 import '../../domain/models/meal_type.dart';
+import '../../domain/models/nutrient_codes.dart';
+import '../../domain/models/nutrient_unit_codes.dart';
+import '../nutrient_amount_formatter.dart';
 import '../providers/record_providers.dart';
 
+/// 提供飲食紀錄的食物搜尋、新增與編輯流程。
 class AddRecordDialog extends ConsumerStatefulWidget {
-  const AddRecordDialog({this.initialRecord, super.key});
+  const AddRecordDialog({
+    this.initialRecord,
+    this.recordDate,
+    this.onSaved,
+    super.key,
+  });
 
+  /// 編輯模式使用的既有紀錄；未提供時為新增模式。
   final DailyRecord? initialRecord;
+
+  /// 新增模式要寫入的本地日期；未提供時使用飲食紀錄頁選取日期。
+  final DateTime? recordDate;
+
+  /// 紀錄成功儲存後通知開啟視窗的畫面重新整理。
+  final VoidCallback? onSaved;
 
   @override
   ConsumerState<AddRecordDialog> createState() => _AddRecordDialogState();
@@ -95,8 +111,8 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
                         ).colorScheme.primaryContainer,
                         title: Text(food.name),
                         subtitle: Text(
-                          '${food.nutritionPer100Grams.calories.toStringAsFixed(0)} '
-                          'kcal / 100 克',
+                          '${formatNutrientAmount(food.nutrientPer100Grams(NutrientCodes.calories))} '
+                          '/ 100 克',
                         ),
                         trailing: isSelected
                             ? const Icon(Icons.check_circle)
@@ -123,7 +139,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
                     ),
                     decoration: const InputDecoration(
                       labelText: '份量（克）',
-                      suffixText: 'g',
+                      suffixText: NutrientUnitCodes.gram,
                     ),
                   ),
                 ),
@@ -189,15 +205,21 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
     }
 
     setState(() => _isSubmitting = true);
+    var mutationFailed = false;
     if (widget.initialRecord == null) {
-      await ref
-          .read(dailyRecordsProvider.notifier)
-          .addRecord(
-            food: _selectedFood!,
-            quantityGrams: quantity,
-            mealType: _mealType,
-            note: _noteController.text,
-          );
+      try {
+        await ref
+            .read(dailyRecordsProvider.notifier)
+            .addRecord(
+              food: _selectedFood!,
+              quantityGrams: quantity,
+              mealType: _mealType,
+              note: _noteController.text,
+              recordDate: widget.recordDate,
+            );
+      } on Object {
+        mutationFailed = true;
+      }
     } else {
       await ref
           .read(dailyRecordsProvider.notifier)
@@ -208,11 +230,11 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
             mealType: _mealType,
             note: _noteController.text,
           );
+      mutationFailed = ref.read(dailyRecordsProvider).hasError;
     }
 
     if (!mounted) return;
-    final result = ref.read(dailyRecordsProvider);
-    if (result.hasError) {
+    if (mutationFailed) {
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(
         context,
@@ -220,6 +242,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
       return;
     }
 
+    widget.onSaved?.call();
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

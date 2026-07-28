@@ -8,6 +8,7 @@ import 'providers/record_providers.dart';
 import 'widgets/add_record_dialog.dart';
 import 'widgets/daily_record_bar.dart';
 import 'widgets/nutrition_summary_card.dart';
+import 'widgets/weekly_nutrition_summary_card.dart';
 
 class RecordsPage extends ConsumerWidget {
   const RecordsPage({super.key});
@@ -17,6 +18,7 @@ class RecordsPage extends ConsumerWidget {
     final selectedDate = ref.watch(selectedDateProvider);
     final records = ref.watch(dailyRecordsProvider);
     final summary = ref.watch(nutritionSummaryProvider);
+    final weeklySummary = ref.watch(weeklyNutritionSummaryProvider);
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -37,6 +39,22 @@ class RecordsPage extends ConsumerWidget {
                   error: (error, stackTrace) => _ErrorCard(
                     message: '營養統計暫時無法載入',
                     onRetry: () => ref.invalidate(nutritionSummaryProvider),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.large),
+                weeklySummary.when(
+                  data: (value) => WeeklyNutritionSummaryCard(
+                    summary: value,
+                    onPreviousWeek: () =>
+                        ref.read(selectedDateProvider.notifier).previousWeek(),
+                    onNextWeek: () =>
+                        ref.read(selectedDateProvider.notifier).nextWeek(),
+                  ),
+                  loading: () => const _LoadingCard(height: 160),
+                  error: (error, stackTrace) => _ErrorCard(
+                    message: '每週營養摘要載入失敗',
+                    onRetry: () =>
+                        ref.invalidate(weeklyNutritionSummaryProvider),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.large),

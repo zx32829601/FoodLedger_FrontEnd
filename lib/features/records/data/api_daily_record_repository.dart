@@ -14,11 +14,19 @@ class ApiDailyRecordRepository implements DailyRecordRepository {
   final Dio _dio;
 
   @override
-  Future<List<DailyRecord>> getRecordsForDate(DateTime date) async {
+  Future<List<DailyRecord>> getRecordsForDate(
+    DateTime date, {
+    required String timeZone,
+    required String langCode,
+  }) async {
     try {
       final response = await _dio.get<List<Object?>>(
         '/api/daily-records',
-        queryParameters: {'date': _dateValue(date)},
+        queryParameters: {
+          'date': _dateValue(date),
+          'timeZone': timeZone,
+          'langCode': langCode,
+        },
       );
       return (response.data ?? const [])
           .map(_mapRecord)
@@ -53,6 +61,7 @@ class ApiDailyRecordRepository implements DailyRecordRepository {
         food: food,
         quantityGrams: quantityGrams,
         consumedAt: consumedAt.toUtc(),
+        nutrients: food.nutrientsPer100Grams.scaledBy(quantityGrams / 100),
         mealTypeCode: mealTypeCode,
         note: note,
       );
@@ -105,19 +114,14 @@ class ApiDailyRecordRepository implements DailyRecordRepository {
     final foodJson = json['food'] is Map
         ? Map<String, Object?>.from(json['food']! as Map)
         : const <String, Object?>{};
-    final nutrients = json['nutrients'] is List
+    final rawNutrients = json['nutrients'] is List
         ? json['nutrients']! as List
         : const [];
     final quantity = (json['quantity'] as num).toDouble();
-    double per100Grams(String code) {
-      for (final item in nutrients) {
-        final nutrient = Map<String, Object?>.from(item! as Map);
-        if (nutrient['code'] == code && quantity > 0) {
-          return (nutrient['amount'] as num).toDouble() * 100 / quantity;
-        }
-      }
-      return 0;
-    }
+    final nutrients = [
+      for (final item in rawNutrients)
+        _mapNutrient(Map<String, Object?>.from(item! as Map)),
+    ];
 
     return DailyRecord(
       id: (json['recordId'] as num).toInt(),
@@ -126,17 +130,25 @@ class ApiDailyRecordRepository implements DailyRecordRepository {
         code: foodJson['foodCode'] as String? ?? 'FOOD_$foodId',
         name: foodJson['displayName'] as String? ?? '食物 #$foodId',
         description: '',
-        nutritionPer100Grams: NutritionSummary(
-          calories: per100Grams('Calories'),
-          protein: per100Grams('Protein'),
-          fat: per100Grams('Fat'),
-          carbohydrates: per100Grams('Carbohydrates'),
-        ),
+        langCode: foodJson['langCode'] as String?,
+        nutrientsPer100Grams: const [],
       ),
       quantityGrams: quantity,
       consumedAt: DateTime.parse(json['consumedAt']! as String),
+      nutrients: nutrients,
       mealTypeCode: json['mealTypeCode']! as String,
       note: json['note'] as String?,
+    );
+  }
+
+  static NutrientAmount _mapNutrient(Map<String, Object?> json) {
+    return NutrientAmount(
+      nutrientId: (json['nutrientId'] as num).toInt(),
+      code: json['code']! as String,
+      displayName: json['displayName']! as String,
+      langCode: json['langCode'] as String?,
+      amount: (json['amount'] as num).toDouble(),
+      unitCode: json['unitCode']! as String,
     );
   }
 
