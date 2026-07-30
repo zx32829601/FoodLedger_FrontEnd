@@ -41,7 +41,7 @@ class MockDailyRecordRepository implements DailyRecordRepository {
     required Food food,
     required double quantityGrams,
     required DateTime consumedAt,
-    String mealTypeCode = 'Snack',
+    required String mealTypeCode,
     String? note,
   }) async {
     if (quantityGrams <= 0) {
@@ -110,6 +110,7 @@ class MockDailyRecordRepository implements DailyRecordRepository {
         food: mockFoods[3],
         quantityGrams: 180,
         consumedAt: consumedAt(8, 10),
+        mealTypeCode: 'Breakfast',
         nutrients: mockFoods[3].nutrientsPer100Grams.scaledBy(1.8),
       ),
       DailyRecord(
@@ -117,6 +118,7 @@ class MockDailyRecordRepository implements DailyRecordRepository {
         food: mockFoods[1],
         quantityGrams: 150,
         consumedAt: consumedAt(12, 20),
+        mealTypeCode: 'Lunch',
         nutrients: mockFoods[1].nutrientsPer100Grams.scaledBy(1.5),
       ),
       DailyRecord(
@@ -124,6 +126,7 @@ class MockDailyRecordRepository implements DailyRecordRepository {
         food: mockFoods[0],
         quantityGrams: 200,
         consumedAt: consumedAt(12, 20),
+        mealTypeCode: 'Lunch',
         nutrients: mockFoods[0].nutrientsPer100Grams.scaledBy(2),
       ),
       DailyRecord(
@@ -131,6 +134,7 @@ class MockDailyRecordRepository implements DailyRecordRepository {
         food: mockFoods[4],
         quantityGrams: 120,
         consumedAt: consumedAt(18, 30),
+        mealTypeCode: 'Dinner',
         nutrients: mockFoods[4].nutrientsPer100Grams.scaledBy(1.2),
       ),
     ];

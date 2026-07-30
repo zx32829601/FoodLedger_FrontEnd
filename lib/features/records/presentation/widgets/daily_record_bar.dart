@@ -10,14 +10,14 @@ import '../nutrient_amount_formatter.dart';
 class DailyRecordBar extends StatelessWidget {
   const DailyRecordBar({
     required this.record,
-    this.showMealType = false,
+    this.mealTypeDisplayName,
     this.onDelete,
     this.onEdit,
     super.key,
   });
 
   final DailyRecord record;
-  final bool showMealType;
+  final String? mealTypeDisplayName;
   final VoidCallback? onDelete;
   final VoidCallback? onEdit;
 
@@ -26,9 +26,9 @@ class DailyRecordBar extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final details = [
-      if (showMealType) record.mealType.label,
+      mealTypeDisplayName,
       '${record.quantityGrams.toStringAsFixed(0)} 克',
-    ].join(' ・ ');
+    ].whereType<String>().join(' ・ ');
 
     return Material(
       key: Key('daily-record-bar-${record.id}'),

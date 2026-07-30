@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_spacing.dart';
-import '../../domain/models/meal_type.dart';
 import '../../domain/models/nutrient_codes.dart';
 import '../../domain/models/nutrition_summary.dart';
 import '../nutrient_amount_formatter.dart';
@@ -12,11 +11,13 @@ const _summaryHeaderStackBreakpoint = 360.0;
 class NutritionSummaryCard extends StatelessWidget {
   const NutritionSummaryCard({
     required this.summary,
+    this.mealTypeLabels = const {},
     this.calorieGoal = 2000,
     super.key,
   });
 
   final NutritionSummary summary;
+  final Map<String, String> mealTypeLabels;
   final double calorieGoal;
 
   @override
@@ -91,7 +92,7 @@ class NutritionSummaryCard extends StatelessWidget {
                       child: _MealTypeBanner(
                         mealTypeCode: meal.mealTypeCode,
                         label:
-                            MealType.fromCode(meal.mealTypeCode)?.label ??
+                            mealTypeLabels[meal.mealTypeCode] ??
                             meal.mealTypeCode,
                         totals: meal.totals,
                       ),

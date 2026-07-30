@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_spacing.dart';
+import '../../../core/widgets/confirmation_dialog.dart';
 import '../domain/models/daily_record.dart';
-import '../domain/models/meal_type.dart';
+import '../domain/models/meal_type_option.dart';
 import 'providers/record_providers.dart';
 import 'widgets/add_record_dialog.dart';
 import 'widgets/daily_record_bar.dart';
@@ -19,6 +20,16 @@ class RecordsPage extends ConsumerWidget {
     final records = ref.watch(dailyRecordsProvider);
     final summary = ref.watch(nutritionSummaryProvider);
     final weeklySummary = ref.watch(weeklyNutritionSummaryProvider);
+    final mealTypeOptions = ref
+        .watch(mealTypeOptionsProvider)
+        .when(
+          data: (options) => options,
+          loading: () => const <MealTypeOption>[],
+          error: (error, stackTrace) => const <MealTypeOption>[],
+        );
+    final mealTypeLabels = {
+      for (final option in mealTypeOptions) option.code: option.displayName,
+    };
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -34,7 +45,10 @@ class RecordsPage extends ConsumerWidget {
                 _DateSelector(selectedDate: selectedDate),
                 const SizedBox(height: AppSpacing.medium),
                 summary.when(
-                  data: (value) => NutritionSummaryCard(summary: value),
+                  data: (value) => NutritionSummaryCard(
+                    summary: value,
+                    mealTypeLabels: mealTypeLabels,
+                  ),
                   loading: () => const _LoadingCard(height: 146),
                   error: (error, stackTrace) => _ErrorCard(
                     message: '營養統計暫時無法載入',
@@ -66,7 +80,10 @@ class RecordsPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.medium),
                 records.when(
-                  data: (items) => _RecordsByMeal(records: items),
+                  data: (items) => _RecordsByMeal(
+                    records: items,
+                    mealTypeOptions: mealTypeOptions,
+                  ),
                   loading: () => const _LoadingCard(height: 180),
                   error: (error, stackTrace) => _ErrorCard(
                     message: '飲食紀錄暫時無法載入',
@@ -221,9 +238,10 @@ class _DateSelector extends ConsumerWidget {
 }
 
 class _RecordsByMeal extends ConsumerWidget {
-  const _RecordsByMeal({required this.records});
+  const _RecordsByMeal({required this.records, required this.mealTypeOptions});
 
   final List<DailyRecord> records;
+  final List<MealTypeOption> mealTypeOptions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -231,33 +249,56 @@ class _RecordsByMeal extends ConsumerWidget {
       return const _EmptyRecords();
     }
 
+    final knownCodes = mealTypeOptions.map((option) => option.code).toSet();
+    final unknownCodes =
+        records
+            .map((record) => record.mealTypeCode)
+            .where((code) => !knownCodes.contains(code))
+            .toSet()
+            .toList()
+          ..sort();
+    final visibleMealTypes = [
+      ...mealTypeOptions.where(
+        (option) => records.any((record) => record.mealTypeCode == option.code),
+      ),
+      for (final code in unknownCodes)
+        MealTypeOption(code: code, displayName: code, sortOrder: 0),
+    ];
+
     return Column(
       children: [
-        for (final mealType in MealType.values)
-          if (records.any((record) => record.mealType == mealType)) ...[
-            _MealSection(
-              mealType: mealType,
-              records: records
-                  .where((record) => record.mealType == mealType)
-                  .toList(growable: false),
-              onDelete: (recordId) async {
-                await ref
-                    .read(dailyRecordsProvider.notifier)
-                    .deleteRecord(recordId);
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('紀錄已刪除')));
-              },
-              onEdit: (record) async {
-                await showDialog<void>(
-                  context: context,
-                  builder: (context) => AddRecordDialog(initialRecord: record),
-                );
-              },
-            ),
-            const SizedBox(height: AppSpacing.medium),
-          ],
+        for (final mealType in visibleMealTypes) ...[
+          _MealSection(
+            mealType: mealType,
+            records: records
+                .where((record) => record.mealTypeCode == mealType.code)
+                .toList(growable: false),
+            onDelete: (record) async {
+              final confirmed = await showConfirmationDialog(
+                context,
+                title: '刪除飲食紀錄',
+                message: '確定要刪除「${record.food.name}」這筆飲食紀錄嗎？此操作無法復原。',
+                confirmLabel: '刪除',
+                isDestructive: true,
+              );
+              if (!confirmed) return;
+              await ref
+                  .read(dailyRecordsProvider.notifier)
+                  .deleteRecord(record.id);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('紀錄已刪除')));
+            },
+            onEdit: (record) async {
+              await showDialog<void>(
+                context: context,
+                builder: (context) => AddRecordDialog(initialRecord: record),
+              );
+            },
+          ),
+          const SizedBox(height: AppSpacing.medium),
+        ],
       ],
     );
   }
@@ -271,9 +312,9 @@ class _MealSection extends StatelessWidget {
     required this.onEdit,
   });
 
-  final MealType mealType;
+  final MealTypeOption mealType;
   final List<DailyRecord> records;
-  final ValueChanged<int> onDelete;
+  final ValueChanged<DailyRecord> onDelete;
   final ValueChanged<DailyRecord> onEdit;
 
   @override
@@ -282,7 +323,7 @@ class _MealSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          mealType.label,
+          mealType.displayName,
           style: Theme.of(
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -296,7 +337,7 @@ class _MealSection extends StatelessWidget {
             final record = records[index];
             return DailyRecordBar(
               record: record,
-              onDelete: () => onDelete(record.id),
+              onDelete: () => onDelete(record),
               onEdit: () => onEdit(record),
             );
           },

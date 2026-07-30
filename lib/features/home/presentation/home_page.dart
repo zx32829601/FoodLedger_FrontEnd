@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_spacing.dart';
 import '../../records/domain/models/daily_record.dart';
+import '../../records/presentation/providers/record_providers.dart';
 import '../../records/presentation/widgets/add_record_dialog.dart';
 import '../../records/presentation/widgets/daily_record_bar.dart';
 import '../../records/presentation/widgets/nutrition_summary_card.dart';
@@ -40,6 +41,15 @@ class _HomePageState extends ConsumerState<HomePage>
   Widget build(BuildContext context) {
     final summary = ref.watch(homeNutritionSummaryProvider);
     final records = ref.watch(homeDailyRecordsProvider);
+    final mealTypeLabels = ref
+        .watch(mealTypeOptionsProvider)
+        .when(
+          data: (options) => {
+            for (final option in options) option.code: option.displayName,
+          },
+          loading: () => const <String, String>{},
+          error: (error, stackTrace) => const <String, String>{},
+        );
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -53,7 +63,10 @@ class _HomePageState extends ConsumerState<HomePage>
                 _HomeHeader(onAddRecord: () => _showAddRecordDialog(context)),
                 const SizedBox(height: AppSpacing.large),
                 summary.when(
-                  data: (value) => NutritionSummaryCard(summary: value),
+                  data: (value) => NutritionSummaryCard(
+                    summary: value,
+                    mealTypeLabels: mealTypeLabels,
+                  ),
                   loading: () => const _HomeLoadingCard(),
                   error: (error, stackTrace) => const _HomeMessageCard(
                     icon: Icons.error_outline,
@@ -69,7 +82,10 @@ class _HomePageState extends ConsumerState<HomePage>
                 ),
                 const SizedBox(height: AppSpacing.medium),
                 records.when(
-                  data: (items) => _TodayRecords(records: items),
+                  data: (items) => _TodayRecords(
+                    records: items,
+                    mealTypeLabels: mealTypeLabels,
+                  ),
                   loading: () => const _HomeLoadingCard(),
                   error: (error, stackTrace) => const _HomeMessageCard(
                     icon: Icons.error_outline,
@@ -136,9 +152,10 @@ class _HomeHeader extends StatelessWidget {
 }
 
 class _TodayRecords extends StatelessWidget {
-  const _TodayRecords({required this.records});
+  const _TodayRecords({required this.records, required this.mealTypeLabels});
 
   final List<DailyRecord> records;
+  final Map<String, String> mealTypeLabels;
 
   @override
   Widget build(BuildContext context) {
@@ -154,8 +171,14 @@ class _TodayRecords extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: recentRecords.length,
-      itemBuilder: (context, index) =>
-          DailyRecordBar(record: recentRecords[index], showMealType: true),
+      itemBuilder: (context, index) {
+        final record = recentRecords[index];
+        return DailyRecordBar(
+          record: record,
+          mealTypeDisplayName:
+              mealTypeLabels[record.mealTypeCode] ?? record.mealTypeCode,
+        );
+      },
       separatorBuilder: (context, index) =>
           const SizedBox(height: AppSpacing.small),
     );

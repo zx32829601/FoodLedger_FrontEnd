@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../domain/models/food.dart';
 import '../../domain/models/daily_record.dart';
-import '../../domain/models/meal_type.dart';
 import '../../domain/models/nutrient_codes.dart';
 import '../../domain/models/nutrient_unit_codes.dart';
 import '../nutrient_amount_formatter.dart';
@@ -39,7 +38,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
   late final TextEditingController _noteController;
   String _query = '';
   Food? _selectedFood;
-  late MealType _mealType;
+  String? _mealTypeCode;
   bool _isSubmitting = false;
   Timer? _debounce;
 
@@ -51,7 +50,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
     );
     _noteController = TextEditingController(text: widget.initialRecord?.note);
     _selectedFood = widget.initialRecord?.food;
-    _mealType = widget.initialRecord?.mealType ?? MealType.breakfast;
+    _mealTypeCode = widget.initialRecord?.mealTypeCode;
   }
 
   @override
@@ -65,6 +64,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
   @override
   Widget build(BuildContext context) {
     final foods = ref.watch(foodSearchProvider(_query));
+    final mealTypes = ref.watch(mealTypeOptionsProvider);
 
     return AlertDialog(
       title: Text(widget.initialRecord == null ? '新增飲食紀錄' : '編輯飲食紀錄'),
@@ -145,19 +145,42 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
                 ),
                 const SizedBox(width: AppSpacing.medium),
                 Expanded(
-                  child: DropdownButtonFormField<MealType>(
-                    initialValue: _mealType,
-                    decoration: const InputDecoration(labelText: '餐別'),
-                    items: [
-                      for (final mealType in MealType.values)
-                        DropdownMenuItem(
-                          value: mealType,
-                          child: Text(mealType.label),
-                        ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) setState(() => _mealType = value);
+                  child: mealTypes.when(
+                    data: (options) {
+                      final selectedCode =
+                          options.any((option) => option.code == _mealTypeCode)
+                          ? _mealTypeCode
+                          : options.isEmpty
+                          ? null
+                          : options.first.code;
+                      _mealTypeCode = selectedCode;
+                      return DropdownButtonFormField<String>(
+                        key: const Key('record-meal-type-field'),
+                        initialValue: selectedCode,
+                        decoration: const InputDecoration(labelText: '餐別'),
+                        items: [
+                          for (final option in options)
+                            DropdownMenuItem(
+                              value: option.code,
+                              child: Text(option.displayName),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          setState(() => _mealTypeCode = value);
+                        },
+                      );
                     },
+                    loading: () => const Center(
+                      child: SizedBox.square(
+                        dimension: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    error: (error, stackTrace) => OutlinedButton.icon(
+                      onPressed: () => ref.invalidate(mealTypeOptionsProvider),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('重試載入餐別'),
+                    ),
                   ),
                 ),
               ],
@@ -197,7 +220,10 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
 
   Future<void> _save() async {
     final quantity = double.tryParse(_quantityController.text.trim());
-    if (_selectedFood == null || quantity == null || quantity <= 0) {
+    if (_selectedFood == null ||
+        quantity == null ||
+        quantity <= 0 ||
+        _mealTypeCode == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('請選擇食物並輸入有效份量')));
@@ -213,7 +239,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
             .addRecord(
               food: _selectedFood!,
               quantityGrams: quantity,
-              mealType: _mealType,
+              mealTypeCode: _mealTypeCode!,
               note: _noteController.text,
               recordDate: widget.recordDate,
             );
@@ -227,7 +253,7 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
             record: widget.initialRecord!,
             food: _selectedFood!,
             quantityGrams: quantity,
-            mealType: _mealType,
+            mealTypeCode: _mealTypeCode!,
             note: _noteController.text,
           );
       mutationFailed = ref.read(dailyRecordsProvider).hasError;

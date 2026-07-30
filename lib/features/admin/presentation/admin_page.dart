@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_spacing.dart';
 import '../../../core/localization/localization_providers.dart';
+import '../../../core/widgets/confirmation_dialog.dart';
 import '../../authentication/presentation/providers/auth_providers.dart';
 import '../../records/data/api_food_repository.dart';
 import '../../records/domain/models/food.dart';
@@ -157,28 +158,14 @@ class _AdminPageState extends ConsumerState<AdminPage> {
   }
 
   Future<void> _delete(Food food) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('刪除食物'),
-        content: Text('確定刪除「${food.name}」？已有飲食紀錄的食物無法刪除。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('刪除'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmationDialog(
+      context,
+      title: '刪除食物',
+      message: '確定刪除「${food.name}」？已有飲食紀錄的食物無法刪除；刪除後也無法復原。',
+      confirmLabel: '刪除',
+      isDestructive: true,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     try {
       await ref.read(adminFoodRepositoryProvider).delete(food.id);
       ref.invalidate(adminFoodSearchProvider(_query));
