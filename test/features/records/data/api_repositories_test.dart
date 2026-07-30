@@ -147,6 +147,35 @@ void main() {
       expect(request.data['mealTypeCode'], 'Lunch');
       expect(request.data['consumedAt'], '2026-07-27T04:00:00.000Z');
     });
+
+    test('更新紀錄只使用 quantityInGrams 契約', () async {
+      late RequestOptions request;
+      final dio = _dio((options) {
+        request = options;
+        return null;
+      });
+      addTearDown(dio.close);
+      final food = Food(
+        id: 1,
+        code: 'CHICKEN',
+        name: '雞胸肉',
+        description: '',
+        langCode: 'zh-TW',
+        nutrientsPer100Grams: const [],
+      );
+
+      await ApiDailyRecordRepository(dio).updateRecord(
+        recordId: 11,
+        food: food,
+        quantityGrams: 135,
+        consumedAt: DateTime.parse('2026-07-27T12:00:00+08:00'),
+        mealTypeCode: 'Lunch',
+      );
+
+      expect(request.path, '/api/daily-records/11');
+      expect(request.data['quantityInGrams'], 135);
+      expect(request.data.containsKey('quantity'), isFalse);
+    });
   });
 
   group('ApiDefinedCodeRepository', () {

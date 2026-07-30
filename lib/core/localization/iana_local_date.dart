@@ -3,12 +3,14 @@ import 'package:timezone/timezone.dart' as time_zone;
 
 bool _isTimeZoneDatabaseInitialized = false;
 
+/// 將同一個時間點換算成指定 IANA 時區的當地日期與時間。
+DateTime localDateTimeFromInstant(DateTime instant, String timeZoneName) {
+  return time_zone.TZDateTime.from(instant, _location(timeZoneName));
+}
+
 /// 將同一個時間點換算成指定 IANA 時區的年月日。
 DateTime localDateInTimeZone(DateTime instant, String timeZoneName) {
-  final localDateTime = time_zone.TZDateTime.from(
-    instant,
-    _location(timeZoneName),
-  );
+  final localDateTime = localDateTimeFromInstant(instant, timeZoneName);
   return DateTime(localDateTime.year, localDateTime.month, localDateTime.day);
 }
 

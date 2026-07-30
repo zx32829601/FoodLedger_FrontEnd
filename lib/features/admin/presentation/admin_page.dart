@@ -161,11 +161,14 @@ class _AdminPageState extends ConsumerState<AdminPage> {
     final confirmed = await showConfirmationDialog(
       context,
       title: '刪除食物',
-      message: '確定刪除「${food.name}」？已有飲食紀錄的食物無法刪除；刪除後也無法復原。',
+      message:
+          '確定刪除「${food.name}」？食物名稱翻譯與營養資料會一併刪除；'
+          '若已有飲食紀錄則無法刪除。此操作無法復原。',
       confirmLabel: '刪除',
       isDestructive: true,
     );
     if (!confirmed) return;
+    if (!mounted) return;
     try {
       await ref.read(adminFoodRepositoryProvider).delete(food.id);
       ref.invalidate(adminFoodSearchProvider(_query));

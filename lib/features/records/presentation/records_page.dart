@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_spacing.dart';
+import '../../../core/localization/iana_local_date.dart';
+import '../../../core/localization/localization_providers.dart';
 import '../../../core/widgets/confirmation_dialog.dart';
 import '../domain/models/daily_record.dart';
 import '../domain/models/meal_type_option.dart';
@@ -248,6 +250,7 @@ class _RecordsByMeal extends ConsumerWidget {
     if (records.isEmpty) {
       return const _EmptyRecords();
     }
+    final timeZone = ref.watch(nutritionTimeZoneProvider);
 
     final knownCodes = mealTypeOptions.map((option) => option.code).toSet();
     final unknownCodes =
@@ -274,14 +277,22 @@ class _RecordsByMeal extends ConsumerWidget {
                 .where((record) => record.mealTypeCode == mealType.code)
                 .toList(growable: false),
             onDelete: (record) async {
+              final localConsumedAt = localDateTimeFromInstant(
+                record.consumedAt,
+                timeZone,
+              );
               final confirmed = await showConfirmationDialog(
                 context,
                 title: '刪除飲食紀錄',
-                message: '確定要刪除「${record.food.name}」這筆飲食紀錄嗎？此操作無法復原。',
+                message:
+                    '確定要刪除「${record.food.name}」'
+                    '（${_formatRecordDateTime(localConsumedAt)}）這筆飲食紀錄嗎？'
+                    '此操作無法復原。',
                 confirmLabel: '刪除',
                 isDestructive: true,
               );
               if (!confirmed) return;
+              if (!context.mounted) return;
               await ref
                   .read(dailyRecordsProvider.notifier)
                   .deleteRecord(record.id);
@@ -302,6 +313,12 @@ class _RecordsByMeal extends ConsumerWidget {
       ],
     );
   }
+}
+
+String _formatRecordDateTime(DateTime value) {
+  String twoDigits(int number) => number.toString().padLeft(2, '0');
+  return '${value.year}/${twoDigits(value.month)}/${twoDigits(value.day)} '
+      '${twoDigits(value.hour)}:${twoDigits(value.minute)}';
 }
 
 class _MealSection extends StatelessWidget {

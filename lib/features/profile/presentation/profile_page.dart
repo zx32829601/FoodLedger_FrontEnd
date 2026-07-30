@@ -45,6 +45,7 @@ class ProfilePage extends ConsumerWidget {
                     confirmLabel: '登出',
                   );
                   if (!confirmed) return;
+                  if (!context.mounted) return;
                   await ref.read(authenticationProvider.notifier).signOut();
                 },
                 icon: const Icon(Icons.logout),

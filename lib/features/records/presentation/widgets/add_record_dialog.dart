@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_spacing.dart';
+import '../../../../core/api/api_exception.dart';
 import '../../domain/models/food.dart';
 import '../../domain/models/daily_record.dart';
+import '../../domain/models/meal_type_option.dart';
 import '../../domain/models/nutrient_codes.dart';
 import '../../domain/models/nutrient_unit_codes.dart';
 import '../nutrient_amount_formatter.dart';
@@ -39,6 +41,8 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
   String _query = '';
   Food? _selectedFood;
   String? _mealTypeCode;
+  String? _mealTypeError;
+  bool _requiresMealTypeReselection = false;
   bool _isSubmitting = false;
   Timer? _debounce;
 
@@ -51,6 +55,18 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
     _noteController = TextEditingController(text: widget.initialRecord?.note);
     _selectedFood = widget.initialRecord?.food;
     _mealTypeCode = widget.initialRecord?.mealTypeCode;
+    ref.listenManual(mealTypeOptionsProvider, (previous, next) {
+      final options = next.value;
+      if (!mounted ||
+          widget.initialRecord != null ||
+          _requiresMealTypeReselection ||
+          _mealTypeCode != null ||
+          options == null ||
+          options.isEmpty) {
+        return;
+      }
+      setState(() => _mealTypeCode = options.first.code);
+    }, fireImmediately: true);
   }
 
   @override
@@ -147,17 +163,20 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
                 Expanded(
                   child: mealTypes.when(
                     data: (options) {
-                      final selectedCode =
-                          options.any((option) => option.code == _mealTypeCode)
-                          ? _mealTypeCode
-                          : options.isEmpty
-                          ? null
-                          : options.first.code;
-                      _mealTypeCode = selectedCode;
+                      final selectedCode = _selectedMealTypeCode(options);
+                      final hasStaleInitialValue =
+                          widget.initialRecord != null &&
+                          _mealTypeCode != null &&
+                          selectedCode == null;
                       return DropdownButtonFormField<String>(
                         key: const Key('record-meal-type-field'),
                         initialValue: selectedCode,
-                        decoration: const InputDecoration(labelText: '餐別'),
+                        decoration: InputDecoration(
+                          labelText: '餐別',
+                          errorText:
+                              _mealTypeError ??
+                              (hasStaleInitialValue ? '餐別已更新，請重新選擇' : null),
+                        ),
                         items: [
                           for (final option in options)
                             DropdownMenuItem(
@@ -166,7 +185,11 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
                             ),
                         ],
                         onChanged: (value) {
-                          setState(() => _mealTypeCode = value);
+                          setState(() {
+                            _mealTypeCode = value;
+                            _mealTypeError = null;
+                            _requiresMealTypeReselection = false;
+                          });
                         },
                       );
                     },
@@ -220,10 +243,13 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
 
   Future<void> _save() async {
     final quantity = double.tryParse(_quantityController.text.trim());
+    final mealTypeCode = _selectedMealTypeCode(
+      ref.read(mealTypeOptionsProvider).value ?? const [],
+    );
     if (_selectedFood == null ||
         quantity == null ||
         quantity <= 0 ||
-        _mealTypeCode == null) {
+        mealTypeCode == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('請選擇食物並輸入有效份量')));
@@ -231,40 +257,56 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
     }
 
     setState(() => _isSubmitting = true);
-    var mutationFailed = false;
-    if (widget.initialRecord == null) {
-      try {
+    Object? mutationError;
+    try {
+      if (widget.initialRecord == null) {
         await ref
             .read(dailyRecordsProvider.notifier)
             .addRecord(
               food: _selectedFood!,
               quantityGrams: quantity,
-              mealTypeCode: _mealTypeCode!,
+              mealTypeCode: mealTypeCode,
               note: _noteController.text,
               recordDate: widget.recordDate,
             );
-      } on Object {
-        mutationFailed = true;
+      } else {
+        await ref
+            .read(dailyRecordsProvider.notifier)
+            .updateRecord(
+              record: widget.initialRecord!,
+              food: _selectedFood!,
+              quantityGrams: quantity,
+              mealTypeCode: mealTypeCode,
+              note: _noteController.text,
+            );
+        mutationError = ref.read(dailyRecordsProvider).error;
       }
-    } else {
-      await ref
-          .read(dailyRecordsProvider.notifier)
-          .updateRecord(
-            record: widget.initialRecord!,
-            food: _selectedFood!,
-            quantityGrams: quantity,
-            mealTypeCode: _mealTypeCode!,
-            note: _noteController.text,
-          );
-      mutationFailed = ref.read(dailyRecordsProvider).hasError;
+    } on Object catch (error) {
+      mutationError = error;
     }
 
     if (!mounted) return;
-    if (mutationFailed) {
-      setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('新增失敗，請稍後再試')));
+    if (_isInvalidMealType(mutationError)) {
+      ref.invalidate(mealTypeOptionsProvider);
+      setState(() {
+        _isSubmitting = false;
+        _mealTypeCode = null;
+        _mealTypeError = '餐別已更新，請重新選擇';
+        _requiresMealTypeReselection = true;
+      });
+      return;
+    }
+    if (mutationError != null) {
+      setState(() {
+        _isSubmitting = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.initialRecord == null ? '新增失敗，請稍後再試' : '編輯失敗，請稍後再試',
+          ),
+        ),
+      );
       return;
     }
 
@@ -275,5 +317,22 @@ class _AddRecordDialogState extends ConsumerState<AddRecordDialog> {
         content: Text(widget.initialRecord == null ? '飲食紀錄已新增' : '飲食紀錄已更新'),
       ),
     );
+  }
+
+  String? _selectedMealTypeCode(List<MealTypeOption> options) {
+    final currentCode = _mealTypeCode;
+    if (currentCode != null &&
+        options.any((option) => option.code == currentCode)) {
+      return currentCode;
+    }
+    return null;
+  }
+
+  static bool _isInvalidMealType(Object? error) {
+    if (error is! ApiException) return false;
+    if (error.code == 'DailyRecord.InvalidMealType') return true;
+    return error.fieldErrors.values
+        .expand((errors) => errors)
+        .any((fieldError) => fieldError.code == 'DailyRecord.InvalidMealType');
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_ledger_frontend/app/app.dart';
 import 'package:food_ledger_frontend/app/theme/theme_preference_store.dart';
+import 'package:food_ledger_frontend/core/api/api_exception.dart';
 import 'package:food_ledger_frontend/core/widgets/app_brand_banner.dart';
 import 'package:food_ledger_frontend/features/authentication/data/mock_auth_repository.dart';
 import 'package:food_ledger_frontend/features/authentication/domain/models/app_user.dart';
@@ -14,8 +15,11 @@ import 'package:food_ledger_frontend/features/records/data/mock_daily_record_rep
 import 'package:food_ledger_frontend/features/records/data/mock_defined_code_repository.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_food_repository.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_nutrition_repository.dart';
+import 'package:food_ledger_frontend/features/records/domain/models/daily_record.dart';
+import 'package:food_ledger_frontend/features/records/domain/models/food.dart';
 import 'package:food_ledger_frontend/features/records/presentation/providers/record_providers.dart';
 import 'package:food_ledger_frontend/features/records/domain/models/meal_type_option.dart';
+import 'package:food_ledger_frontend/features/records/domain/repositories/daily_record_repository.dart';
 import 'package:food_ledger_frontend/features/records/domain/repositories/defined_code_repository.dart';
 import 'package:food_ledger_frontend/features/records/presentation/widgets/daily_record_bar.dart';
 
@@ -40,11 +44,13 @@ void main() {
     required Size surfaceSize,
     AppUser? initialUser = memberUser,
     AuthRepository? authRepository,
+    DailyRecordRepository? dailyRecordRepository,
     DefinedCodeRepository? definedCodeRepository,
     bool restoreSessionOnStart = false,
     bool settle = true,
   }) async {
-    final dailyRecordRepository = MockDailyRecordRepository();
+    final resolvedDailyRecordRepository =
+        dailyRecordRepository ?? MockDailyRecordRepository();
     tester.view.physicalSize = surfaceSize;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -65,13 +71,13 @@ void main() {
           ),
           foodRepositoryProvider.overrideWithValue(MockFoodRepository()),
           dailyRecordRepositoryProvider.overrideWithValue(
-            dailyRecordRepository,
+            resolvedDailyRecordRepository,
           ),
           definedCodeRepositoryProvider.overrideWithValue(
             definedCodeRepository ?? const MockDefinedCodeRepository(),
           ),
           nutritionRepositoryProvider.overrideWithValue(
-            MockNutritionRepository(dailyRecordRepository),
+            MockNutritionRepository(resolvedDailyRecordRepository),
           ),
         ],
         child: const FoodLedgerApp(),
@@ -373,11 +379,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('刪除飲食紀錄'), findsOneWidget);
+    expect(find.textContaining(':10）'), findsOneWidget);
     expect(find.textContaining('此操作無法復原'), findsOneWidget);
     await tester.tap(find.byKey(const Key('confirmation-cancel-button')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('daily-record-bar-1')), findsOneWidget);
+  });
+
+  testWidgets('確認刪除飲食紀錄後會刷新列表', (tester) async {
+    await pumpApp(tester, surfaceSize: const Size(390, 844));
+
+    final recordsDestination = find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('紀錄'),
+    );
+    await tester.tap(recordsDestination);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('delete-record-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('delete-record-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirmation-confirm-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('daily-record-bar-1')), findsNothing);
   });
 
   testWidgets('桌面寬度顯示側邊導覽並可切換到管理後台', (tester) async {
@@ -486,6 +512,93 @@ void main() {
     expect(find.text('早午餐'), findsOneWidget);
     expect(find.text('早餐'), findsNothing);
   });
+
+  testWidgets('編輯紀錄遇到已移除的餐別時要求使用者重新選擇', (tester) async {
+    await pumpApp(
+      tester,
+      surfaceSize: const Size(390, 844),
+      definedCodeRepository: const MockDefinedCodeRepository(
+        mealTypes: [
+          MealTypeOption(code: 'Brunch', displayName: '早午餐', sortOrder: 1),
+          MealTypeOption(code: 'Dinner', displayName: '晚餐', sortOrder: 2),
+        ],
+      ),
+    );
+
+    final recordsDestination = find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('紀錄'),
+    );
+    await tester.tap(recordsDestination);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('edit-record-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('edit-record-1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('編輯飲食紀錄'), findsOneWidget);
+    expect(find.text('餐別已更新，請重新選擇'), findsOneWidget);
+  });
+
+  testWidgets('餐別失效時保留表單、刷新 DefinedCode 並標示餐別欄位', (tester) async {
+    final definedCodeRepository = _RecordingDefinedCodeRepository();
+    await pumpApp(
+      tester,
+      surfaceSize: const Size(390, 844),
+      dailyRecordRepository: _InvalidMealTypeDailyRecordRepository(),
+      definedCodeRepository: definedCodeRepository,
+    );
+
+    await tester.tap(find.byKey(const Key('home-add-record-button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('food-search-field')), '香蕉');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('food-option-6')));
+    await tester.tap(find.byKey(const Key('save-record-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('save-record-button')), findsOneWidget);
+    expect(find.text('餐別已更新，請重新選擇'), findsOneWidget);
+    expect(definedCodeRepository.callCount, 2);
+  });
+}
+
+class _InvalidMealTypeDailyRecordRepository extends MockDailyRecordRepository {
+  _InvalidMealTypeDailyRecordRepository() : super(initialRecords: []);
+
+  @override
+  Future<DailyRecord> addRecord({
+    required Food food,
+    required double quantityGrams,
+    required DateTime consumedAt,
+    required String mealTypeCode,
+    String? note,
+  }) {
+    throw const ApiException(
+      message: '餐別已失效',
+      code: 'Validation.Failed',
+      statusCode: 400,
+      fieldErrors: {
+        'mealTypeCode': [
+          ApiFieldError(code: 'DailyRecord.InvalidMealType', message: '餐別已失效'),
+        ],
+      },
+    );
+  }
+}
+
+class _RecordingDefinedCodeRepository implements DefinedCodeRepository {
+  int callCount = 0;
+
+  @override
+  Future<List<MealTypeOption>> getMealTypes() async {
+    callCount++;
+    return const [
+      MealTypeOption(code: 'Breakfast', displayName: '早餐', sortOrder: 1),
+      MealTypeOption(code: 'Lunch', displayName: '午餐', sortOrder: 2),
+    ];
+  }
 }
 
 class _DuplicateUserAccountRepository implements AuthRepository {
