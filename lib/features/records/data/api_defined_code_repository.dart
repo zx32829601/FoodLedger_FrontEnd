@@ -11,10 +11,11 @@ class ApiDefinedCodeRepository implements DefinedCodeRepository {
   final Dio _dio;
 
   @override
-  Future<List<MealTypeOption>> getMealTypes() async {
+  Future<List<MealTypeOption>> getMealTypes({required String langCode}) async {
     try {
       final response = await _dio.get<List<Object?>>(
         '/api/defined-codes/meal-types',
+        queryParameters: {'langCode': langCode},
       );
       final options =
           [
@@ -38,6 +39,8 @@ class ApiDefinedCodeRepository implements DefinedCodeRepository {
     return MealTypeOption(
       code: json['code']! as String,
       displayName: json['displayName']! as String,
+      langCode: json['langCode'] as String?,
+      note: json['note'] as String?,
       sortOrder: (json['sortOrder'] as num).toInt(),
     );
   }

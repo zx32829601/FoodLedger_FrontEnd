@@ -15,7 +15,7 @@ class MockDefinedCodeRepository implements DefinedCodeRepository {
   final List<MealTypeOption> mealTypes;
 
   @override
-  Future<List<MealTypeOption>> getMealTypes() async {
+  Future<List<MealTypeOption>> getMealTypes({required String langCode}) async {
     return List.unmodifiable(mealTypes);
   }
 }

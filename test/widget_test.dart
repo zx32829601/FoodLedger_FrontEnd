@@ -592,7 +592,7 @@ class _RecordingDefinedCodeRepository implements DefinedCodeRepository {
   int callCount = 0;
 
   @override
-  Future<List<MealTypeOption>> getMealTypes() async {
+  Future<List<MealTypeOption>> getMealTypes({required String langCode}) async {
     callCount++;
     return const [
       MealTypeOption(code: 'Breakfast', displayName: '早餐', sortOrder: 1),

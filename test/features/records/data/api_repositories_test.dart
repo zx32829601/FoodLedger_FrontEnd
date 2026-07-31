@@ -184,17 +184,34 @@ void main() {
       final dio = _dio((options) {
         request = options;
         return <Object?>[
-          {'code': 'Lunch', 'displayName': '午餐', 'sortOrder': 2},
-          {'code': 'Brunch', 'displayName': '早午餐', 'sortOrder': 1},
+          {
+            'code': 'Lunch',
+            'displayName': 'Lunch',
+            'langCode': 'en-US',
+            'note': 'Midday meal.',
+            'sortOrder': 2,
+          },
+          {
+            'code': 'Brunch',
+            'displayName': 'Brunch',
+            'langCode': 'en-US',
+            'note': 'Late morning meal.',
+            'sortOrder': 1,
+          },
         ];
       });
       addTearDown(dio.close);
 
-      final options = await ApiDefinedCodeRepository(dio).getMealTypes();
+      final options = await ApiDefinedCodeRepository(
+        dio,
+      ).getMealTypes(langCode: 'en-US');
 
       expect(request.path, '/api/defined-codes/meal-types');
+      expect(request.queryParameters['langCode'], 'en-US');
       expect(options.map((option) => option.code), ['Brunch', 'Lunch']);
-      expect(options.first.displayName, '早午餐');
+      expect(options.first.displayName, 'Brunch');
+      expect(options.first.langCode, 'en-US');
+      expect(options.first.note, 'Late morning meal.');
       expect(options.first.sortOrder, 1);
     });
   });
