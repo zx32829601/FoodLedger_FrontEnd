@@ -34,7 +34,9 @@ final nutritionRepositoryProvider = Provider<NutritionRepository>((ref) {
 });
 
 final mealTypeOptionsProvider = FutureProvider<List<MealTypeOption>>((ref) {
-  return ref.watch(definedCodeRepositoryProvider).getMealTypes();
+  return ref
+      .watch(definedCodeRepositoryProvider)
+      .getMealTypes(langCode: ref.watch(nutritionLangCodeProvider));
 });
 
 typedef LocalizedDateQuery = ({

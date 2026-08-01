@@ -141,11 +141,15 @@
 - `DailyRecord.NotFound`
 - `System.UnexpectedError`
 
-## DefinedCode 與餐別
+## DefinedCode 多語系選項
 
 | 方法 | Path | 用途 | 授權 |
 | --- | --- | --- | --- |
 | `GET` | `/api/defined-codes/meal-types` | 取得可用餐別選項 | 否 |
+| `GET` | `/api/defined-codes/fitness-goals` | 取得可用健身目標 | 否 |
+| `GET` | `/api/defined-codes/activity-levels` | 取得可用活動程度 | 否 |
+
+三個端點都接受 `langCode` query；預設 `zh-TW`，找不到指定翻譯時 fallback 至 `en-US`。
 
 Response item：
 
@@ -153,6 +157,8 @@ Response item：
 {
   "code": "Breakfast",
   "displayName": "早餐",
+  "langCode": "zh-TW",
+  "note": "通常於早晨或起床後食用的第一餐。",
   "sortOrder": 1
 }
 ```
@@ -163,6 +169,10 @@ Response item：
 - API 只回傳 `IsActive = true` 的 `MealType`，並依 `sortOrder` 由小到大排序。
 - 第一版 seed 為 `Breakfast`、`Lunch`、`Dinner`、`Snack`。
 - `mealTypeCode` 是資料契約；`displayName` 只用於顯示。
+- `langCode` 是後端實際採用的翻譯語系，可能因 fallback 與 request 不同。
+- `note` 是提供使用者理解選項的說明，不得用來推導計算參數。
+- Fitness Goal seed：`FAT_LOSS`、`MAINTAIN`、`MUSCLE_GAIN`。
+- Activity Level seed：`SEDENTARY`、`LIGHT`、`MODERATE`、`HIGH`、`VERY_HIGH`。
 - 載入失敗時應顯示可重試狀態，不使用前端自建餐別清單冒充後端結果。
 
 待後端確認：DailyRecord 歷史資料可保留 inactive `mealTypeCode`，但目前餐別 API 只回 active code，且 DailyRecord 不回 `mealTypeDisplayName`。前端遇到查不到的歷史 code 時暫以原始 code 作為 fallback，不自行改寫資料。

@@ -13,12 +13,9 @@ import 'package:food_ledger_frontend/features/records/presentation/providers/rec
 
 void main() {
   test('MealTypeOptionsProvider 使用後端 DefinedCode 選項', () async {
+    final repository = _FakeDefinedCodeRepository();
     final container = ProviderContainer(
-      overrides: [
-        definedCodeRepositoryProvider.overrideWithValue(
-          _FakeDefinedCodeRepository(),
-        ),
-      ],
+      overrides: [definedCodeRepositoryProvider.overrideWithValue(repository)],
     );
     addTearDown(container.dispose);
 
@@ -26,6 +23,7 @@ void main() {
 
     expect(options.map((option) => option.code), ['Brunch', 'Dinner']);
     expect(options.first.displayName, '早午餐');
+    expect(repository.lastLangCode, 'zh-TW');
   });
 
   test('DailyRecordsController_AddRecord_UpdatesRecordsAndSummary', () async {
@@ -175,8 +173,11 @@ void main() {
 }
 
 class _FakeDefinedCodeRepository implements DefinedCodeRepository {
+  String? lastLangCode;
+
   @override
-  Future<List<MealTypeOption>> getMealTypes() async {
+  Future<List<MealTypeOption>> getMealTypes({required String langCode}) async {
+    lastLangCode = langCode;
     return const [
       MealTypeOption(code: 'Brunch', displayName: '早午餐', sortOrder: 1),
       MealTypeOption(code: 'Dinner', displayName: '晚餐', sortOrder: 2),
