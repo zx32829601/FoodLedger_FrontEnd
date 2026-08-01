@@ -561,6 +561,9 @@ void main() {
     await tester.pumpAndSettle();
     await openBananaConfirmation(tester);
 
+    await tester.tap(find.byKey(const Key('record-meal-type-field')));
+    await tester.pumpAndSettle();
+
     expect(find.text('早午餐'), findsOneWidget);
     expect(find.text('早餐'), findsNothing);
   });
