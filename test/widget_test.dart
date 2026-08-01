@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:food_ledger_frontend/app/app.dart';
 import 'package:food_ledger_frontend/app/theme/theme_preference_store.dart';
 import 'package:food_ledger_frontend/core/api/api_exception.dart';
+import 'package:food_ledger_frontend/core/localization/localization_providers.dart';
 import 'package:food_ledger_frontend/core/widgets/app_brand_banner.dart';
 import 'package:food_ledger_frontend/features/authentication/data/mock_auth_repository.dart';
 import 'package:food_ledger_frontend/features/authentication/domain/models/app_user.dart';
@@ -83,6 +84,7 @@ void main() {
           bodyProfileRepositoryProvider.overrideWithValue(
             bodyProfileRepository ?? MockBodyProfileRepository(),
           ),
+          deviceTimeZoneProvider.overrideWith((ref) async => 'Asia/Taipei'),
           nutritionRepositoryProvider.overrideWithValue(
             MockNutritionRepository(resolvedDailyRecordRepository),
           ),

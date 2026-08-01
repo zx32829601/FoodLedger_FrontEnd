@@ -9,10 +9,16 @@ class MockBodyProfileRepository implements BodyProfileRepository {
   BodyProfile? profile;
 
   @override
-  Future<BodyProfile?> getProfile() async => profile;
+  Future<BodyProfile?> getProfile({
+    required String langCode,
+    Future<void>? cancelWhen,
+  }) async => profile;
 
   @override
-  Future<BodyProfile> saveProfile(BodyProfile profile) async {
+  Future<BodyProfile> saveProfile(
+    BodyProfile profile, {
+    Future<void>? cancelWhen,
+  }) async {
     this.profile = BodyProfile(
       birthDate: profile.birthDate,
       biologicalSexCode: profile.biologicalSexCode,

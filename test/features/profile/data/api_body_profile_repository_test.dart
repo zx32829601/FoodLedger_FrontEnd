@@ -14,19 +14,31 @@ void main() {
         'biologicalSexCode': 'MALE',
         'heightInCentimeters': 175.5,
         'fitnessGoalCode': 'MAINTAIN',
+        'fitnessGoalDisplayName': 'Maintain weight',
+        'fitnessGoalLangCode': 'en-US',
+        'fitnessGoalNote': 'Keep current weight.',
         'activityLevelCode': 'MODERATE',
+        'activityLevelDisplayName': 'Moderate',
+        'activityLevelLangCode': 'en-US',
+        'activityLevelNote': 'Three to five active days.',
         'timeZone': 'Asia/Taipei',
         'version': '419fbd52-0bf9-4e47-9321-98fe759471e8',
       };
     });
     addTearDown(dio.close);
 
-    final profile = await ApiBodyProfileRepository(dio).getProfile();
+    final profile = await ApiBodyProfileRepository(
+      dio,
+    ).getProfile(langCode: 'fr-FR');
 
     expect(request.path, '/api/me/body-profile');
+    expect(request.queryParameters['langCode'], 'fr-FR');
     expect(profile?.birthDate, DateTime(1990, 5, 20));
     expect(profile?.heightInCentimeters, 175.5);
     expect(profile?.version, '419fbd52-0bf9-4e47-9321-98fe759471e8');
+    expect(profile?.fitnessGoalDisplayName, 'Maintain weight');
+    expect(profile?.fitnessGoalLangCode, 'en-US');
+    expect(profile?.fitnessGoalNote, 'Keep current weight.');
   });
 
   test('BodyProfile.NotFound 轉換為尚未建立', () async {
@@ -48,7 +60,10 @@ void main() {
     );
     addTearDown(dio.close);
 
-    expect(await ApiBodyProfileRepository(dio).getProfile(), isNull);
+    expect(
+      await ApiBodyProfileRepository(dio).getProfile(langCode: 'zh-TW'),
+      isNull,
+    );
   });
 
   test('PUT 建立時保留 version null，修改時傳回版本', () async {

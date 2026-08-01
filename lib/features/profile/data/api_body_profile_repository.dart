@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 
 import '../../../core/api/antiforgery_request.dart';
@@ -13,11 +15,20 @@ class ApiBodyProfileRepository implements BodyProfileRepository {
   final Dio _dio;
 
   @override
-  Future<BodyProfile?> getProfile() async {
+  Future<BodyProfile?> getProfile({
+    required String langCode,
+    Future<void>? cancelWhen,
+  }) async {
+    final cancelToken = _cancelOn(cancelWhen);
     try {
-      final response = await _dio.get<Object?>('/api/me/body-profile');
+      final response = await _dio.get<Object?>(
+        '/api/me/body-profile',
+        queryParameters: {'langCode': langCode},
+        cancelToken: cancelToken,
+      );
       return _mapProfile(Map<String, Object?>.from(response.data! as Map));
     } on DioException catch (error) {
+      if (CancelToken.isCancel(error)) throw _sessionChanged;
       final exception = ApiException.fromDio(error);
       if (exception.code == 'BodyProfile.NotFound') return null;
       throw exception;
@@ -25,11 +36,19 @@ class ApiBodyProfileRepository implements BodyProfileRepository {
   }
 
   @override
-  Future<BodyProfile> saveProfile(BodyProfile profile) async {
+  Future<BodyProfile> saveProfile(
+    BodyProfile profile, {
+    Future<void>? cancelWhen,
+  }) async {
+    final cancelToken = _cancelOn(cancelWhen);
     try {
       final response = await _dio.put<Object?>(
         '/api/me/body-profile',
-        options: await antiforgeryRequestOptions(_dio),
+        options: await antiforgeryRequestOptions(
+          _dio,
+          cancelToken: cancelToken,
+        ),
+        cancelToken: cancelToken,
         data: {
           'birthDate': _dateValue(profile.birthDate),
           'biologicalSexCode': profile.biologicalSexCode,
@@ -42,6 +61,7 @@ class ApiBodyProfileRepository implements BodyProfileRepository {
       );
       return _mapProfile(Map<String, Object?>.from(response.data! as Map));
     } on DioException catch (error) {
+      if (CancelToken.isCancel(error)) throw _sessionChanged;
       throw ApiException.fromDio(error);
     }
   }
@@ -86,6 +106,12 @@ class ApiBodyProfileRepository implements BodyProfileRepository {
     activityLevelCode: json['activityLevelCode']! as String,
     timeZone: json['timeZone']! as String,
     version: json['version']! as String,
+    fitnessGoalDisplayName: json['fitnessGoalDisplayName'] as String?,
+    fitnessGoalLangCode: json['fitnessGoalLangCode'] as String?,
+    fitnessGoalNote: json['fitnessGoalNote'] as String?,
+    activityLevelDisplayName: json['activityLevelDisplayName'] as String?,
+    activityLevelLangCode: json['activityLevelLangCode'] as String?,
+    activityLevelNote: json['activityLevelNote'] as String?,
   );
 
   static BodyProfileOption _mapOption(Map<String, Object?> json) =>
@@ -102,4 +128,17 @@ class ApiBodyProfileRepository implements BodyProfileRepository {
     final day = date.day.toString().padLeft(2, '0');
     return '${date.year}-$month-$day';
   }
+
+  static CancelToken? _cancelOn(Future<void>? cancelWhen) {
+    if (cancelWhen == null) return null;
+    final token = CancelToken();
+    unawaited(cancelWhen.then((_) => token.cancel('登入使用者已變更')));
+    return token;
+  }
+
+  static const _sessionChanged = ApiException(
+    message: '登入使用者已變更，已取消原本的操作。',
+    code: 'Auth.SessionChanged',
+    statusCode: 401,
+  );
 }

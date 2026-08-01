@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_spacing.dart';
 import '../../../core/api/api_exception.dart';
+import '../../../core/localization/iana_local_date.dart';
 import '../../../core/localization/localization_providers.dart';
 import '../domain/models/body_profile.dart';
 import '../domain/models/body_profile_option.dart';
@@ -16,6 +17,7 @@ class BodyProfilePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(bodyProfileProvider);
     final options = ref.watch(bodyProfileOptionsProvider);
+    final deviceTimeZone = ref.watch(deviceTimeZoneProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('身體資料')),
@@ -31,10 +33,19 @@ class BodyProfilePage extends ConsumerWidget {
             message: error is ApiException ? error.message : '無法載入選項',
             onRetry: () => ref.invalidate(bodyProfileOptionsProvider),
           ),
-          data: (availableOptions) => _BodyProfileForm(
-            key: ValueKey(value?.version ?? 'new'),
-            profile: value,
-            options: availableOptions,
+          data: (availableOptions) => deviceTimeZone.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, _) => _BodyProfileForm(
+              key: ValueKey(value?.version ?? 'new'),
+              profile: value,
+              options: availableOptions,
+            ),
+            data: (detectedTimeZone) => _BodyProfileForm(
+              key: ValueKey(value?.version ?? 'new'),
+              profile: value,
+              options: availableOptions,
+              deviceTimeZone: detectedTimeZone,
+            ),
           ),
         ),
       ),
@@ -46,11 +57,13 @@ class _BodyProfileForm extends ConsumerStatefulWidget {
   const _BodyProfileForm({
     required this.profile,
     required this.options,
+    this.deviceTimeZone,
     super.key,
   });
 
   final BodyProfile? profile;
   final BodyProfileOptions options;
+  final String? deviceTimeZone;
 
   @override
   ConsumerState<_BodyProfileForm> createState() => _BodyProfileFormState();
@@ -86,7 +99,10 @@ class _BodyProfileFormState extends ConsumerState<_BodyProfileForm> {
       text: profile?.heightInCentimeters.toString() ?? '',
     );
     _timeZoneController = TextEditingController(
-      text: profile?.timeZone ?? ref.read(nutritionTimeZoneProvider),
+      text:
+          profile?.timeZone ??
+          widget.deviceTimeZone ??
+          ref.read(nutritionTimeZoneProvider),
     );
   }
 
@@ -125,7 +141,17 @@ class _BodyProfileFormState extends ConsumerState<_BodyProfileForm> {
                     labelText: '出生日期',
                     suffixIcon: Icon(Icons.calendar_today_outlined),
                   ),
-                  validator: (_) => _birthDate == null ? '請選擇出生日期' : null,
+                  validator: (_) {
+                    final birthDate = _birthDate;
+                    if (birthDate == null) return '請選擇出生日期';
+                    final today = _currentLocalDate();
+                    final firstDate = _oldestAllowedBirthDate(today);
+                    final lastDate = _yearsBefore(today, 18);
+                    return birthDate.isBefore(firstDate) ||
+                            birthDate.isAfter(lastDate)
+                        ? '年齡必須介於 18 到 120 歲'
+                        : null;
+                  },
                   onTap: _pickBirthDate,
                 ),
                 const SizedBox(height: AppSpacing.medium),
@@ -152,10 +178,14 @@ class _BodyProfileFormState extends ConsumerState<_BodyProfileForm> {
                     suffixText: 'cm',
                   ),
                   validator: (value) {
-                    final height = double.tryParse(value?.trim() ?? '');
-                    return height == null || height < 100 || height > 250
-                        ? '請輸入 100 到 250 公分'
-                        : null;
+                    final normalized = value?.trim() ?? '';
+                    final height = double.tryParse(normalized);
+                    if (height == null || height < 100 || height > 250) {
+                      return '請輸入 100 到 250 公分';
+                    }
+                    return RegExp(r'^\d+(?:\.\d{1,2})?$').hasMatch(normalized)
+                        ? null
+                        : '身高最多可輸入兩位小數';
                   },
                 ),
                 const SizedBox(height: AppSpacing.medium),
@@ -164,6 +194,8 @@ class _BodyProfileFormState extends ConsumerState<_BodyProfileForm> {
                   label: '健身目標',
                   value: _fitnessGoalCode,
                   options: widget.options.fitnessGoals,
+                  inactiveDisplayName: widget.profile?.fitnessGoalDisplayName,
+                  inactiveNote: widget.profile?.fitnessGoalNote,
                   onChanged: (value) =>
                       setState(() => _fitnessGoalCode = value),
                 ),
@@ -173,6 +205,8 @@ class _BodyProfileFormState extends ConsumerState<_BodyProfileForm> {
                   label: '活動程度',
                   value: _activityLevelCode,
                   options: widget.options.activityLevels,
+                  inactiveDisplayName: widget.profile?.activityLevelDisplayName,
+                  inactiveNote: widget.profile?.activityLevelNote,
                   onChanged: (value) =>
                       setState(() => _activityLevelCode = value),
                 ),
@@ -185,9 +219,17 @@ class _BodyProfileFormState extends ConsumerState<_BodyProfileForm> {
                     hintText: 'Asia/Taipei',
                     helperText: '會先帶入應用程式目前使用的時區，也可自行修改。',
                   ),
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? '請輸入 IANA 時區'
-                      : null,
+                  validator: (value) {
+                    final timeZone = value?.trim() ?? '';
+                    if (timeZone.isEmpty) return '請輸入 IANA 時區';
+                    return tryLocalDateInTimeZone(
+                              ref.read(bodyProfileClockProvider)(),
+                              timeZone,
+                            ) ==
+                            null
+                        ? '請輸入有效的 IANA 時區'
+                        : null;
+                  },
                 ),
                 const SizedBox(height: AppSpacing.large),
                 FilledButton.icon(
@@ -210,12 +252,20 @@ class _BodyProfileFormState extends ConsumerState<_BodyProfileForm> {
   }
 
   Future<void> _pickBirthDate() async {
-    final now = DateTime.now();
+    final today = _currentLocalDate();
+    final firstDate = _oldestAllowedBirthDate(today);
+    final lastDate = _yearsBefore(today, 18);
+    final preferredInitialDate = _birthDate ?? DateTime(today.year - 30);
+    final initialDate = preferredInitialDate.isBefore(firstDate)
+        ? firstDate
+        : preferredInitialDate.isAfter(lastDate)
+        ? lastDate
+        : preferredInitialDate;
     final selected = await showDatePicker(
       context: context,
-      initialDate: _birthDate ?? DateTime(now.year - 30),
-      firstDate: DateTime(now.year - 120, now.month, now.day),
-      lastDate: DateTime(now.year - 18, now.month, now.day),
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
     );
     if (selected != null) {
       setState(() {
@@ -224,6 +274,26 @@ class _BodyProfileFormState extends ConsumerState<_BodyProfileForm> {
       });
     }
   }
+
+  DateTime _currentLocalDate() {
+    final now = ref.read(bodyProfileClockProvider)();
+    final requested = tryLocalDateInTimeZone(
+      now,
+      _timeZoneController.text.trim(),
+    );
+    return requested ??
+        localDateInTimeZone(now, ref.read(nutritionTimeZoneProvider));
+  }
+
+  static DateTime _yearsBefore(DateTime date, int years) {
+    final year = date.year - years;
+    final lastDayOfMonth = DateTime(year, date.month + 1, 0).day;
+    final day = date.day > lastDayOfMonth ? lastDayOfMonth : date.day;
+    return DateTime(year, date.month, day);
+  }
+
+  static DateTime _oldestAllowedBirthDate(DateTime today) =>
+      _yearsBefore(today, 121).add(const Duration(days: 1));
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate() ||
@@ -281,6 +351,8 @@ class _OptionField extends StatelessWidget {
     required this.label,
     required this.value,
     required this.options,
+    this.inactiveDisplayName,
+    this.inactiveNote,
     required this.onChanged,
   });
 
@@ -288,6 +360,8 @@ class _OptionField extends StatelessWidget {
   final String label;
   final String? value;
   final List<BodyProfileOption> options;
+  final String? inactiveDisplayName;
+  final String? inactiveNote;
   final ValueChanged<String?> onChanged;
 
   @override
@@ -296,6 +370,7 @@ class _OptionField extends StatelessWidget {
         .where((option) => option.code == value)
         .firstOrNull;
     final hasInactiveSelection = value != null && selected == null;
+    final inactiveSelectionNote = hasInactiveSelection ? inactiveNote : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -305,7 +380,10 @@ class _OptionField extends StatelessWidget {
           decoration: InputDecoration(labelText: label),
           items: [
             if (hasInactiveSelection)
-              DropdownMenuItem(value: value, child: Text('$value（已停用）')),
+              DropdownMenuItem(
+                value: value,
+                child: Text('${inactiveDisplayName ?? value}（已停用）'),
+              ),
             for (final option in options)
               DropdownMenuItem(
                 value: option.code,
@@ -321,6 +399,11 @@ class _OptionField extends StatelessWidget {
           onChanged: onChanged,
         ),
         if (selected?.note case final String note
+            when note.trim().isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.extraSmall),
+          Text(note, style: Theme.of(context).textTheme.bodySmall),
+        ],
+        if (inactiveSelectionNote case final String note
             when note.trim().isNotEmpty) ...[
           const SizedBox(height: AppSpacing.extraSmall),
           Text(note, style: Theme.of(context).textTheme.bodySmall),

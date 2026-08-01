@@ -14,4 +14,11 @@ void main() {
     expect(result.hour, 12);
     expect(result.minute, 20);
   });
+
+  test('無斜線的標準 IANA 時區仍視為有效', () {
+    expect(isKnownIanaTimeZone('UTC'), isTrue);
+    expect(isKnownIanaTimeZone('GMT'), isTrue);
+    expect(isKnownIanaTimeZone('CET'), isTrue);
+    expect(isKnownIanaTimeZone('Invalid Zone'), isFalse);
+  });
 }

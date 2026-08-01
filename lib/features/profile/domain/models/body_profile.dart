@@ -8,6 +8,12 @@ class BodyProfile {
     required this.activityLevelCode,
     required this.timeZone,
     this.version,
+    this.fitnessGoalDisplayName,
+    this.fitnessGoalLangCode,
+    this.fitnessGoalNote,
+    this.activityLevelDisplayName,
+    this.activityLevelLangCode,
+    this.activityLevelNote,
   });
 
   final DateTime birthDate;
@@ -17,4 +23,10 @@ class BodyProfile {
   final String activityLevelCode;
   final String timeZone;
   final String? version;
+  final String? fitnessGoalDisplayName;
+  final String? fitnessGoalLangCode;
+  final String? fitnessGoalNote;
+  final String? activityLevelDisplayName;
+  final String? activityLevelLangCode;
+  final String? activityLevelNote;
 }
