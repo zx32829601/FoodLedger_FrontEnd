@@ -23,7 +23,6 @@ class BodyProfileController extends AsyncNotifier<BodyProfile?> {
   }
 
   Future<BodyProfile> save(BodyProfile profile) async {
-    state = const AsyncLoading();
     try {
       final saved = await ref
           .read(bodyProfileRepositoryProvider)
@@ -36,8 +35,6 @@ class BodyProfileController extends AsyncNotifier<BodyProfile?> {
         state = await AsyncValue.guard(
           ref.read(bodyProfileRepositoryProvider).getProfile,
         );
-      } else {
-        state = AsyncError(error, stackTrace);
       }
       Error.throwWithStackTrace(error, stackTrace);
     }

@@ -74,6 +74,32 @@ void main() {
     );
     expect(repository.getCount, 2);
   });
+
+  test('一般儲存失敗時保留原資料與表單狀態', () async {
+    final original = _profile(version: 'original-version');
+    final repository = _RecordingRepository(
+      profile: original,
+      saveError: const ApiException(
+        message: '輸入資料不正確',
+        code: 'Validation.Failed',
+        statusCode: 400,
+      ),
+    );
+    final container = ProviderContainer(
+      overrides: [bodyProfileRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    await container.read(bodyProfileProvider.future);
+
+    await expectLater(
+      container
+          .read(bodyProfileProvider.notifier)
+          .save(_profile(version: 'original-version')),
+      throwsA(isA<ApiException>()),
+    );
+
+    expect(container.read(bodyProfileProvider).value, same(original));
+  });
 }
 
 BodyProfile _profile({String? version, String timeZone = 'Asia/Taipei'}) =>
