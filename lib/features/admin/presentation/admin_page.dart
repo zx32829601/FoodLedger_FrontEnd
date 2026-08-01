@@ -21,20 +21,18 @@ final adminFoodSearchRepositoryProvider = Provider<FoodRepository>((ref) {
   return ApiFoodRepository(ref.watch(apiClientProvider).dio);
 });
 
-final adminFoodSearchProvider = FutureProvider.family<List<FoodSearchItem>, String>((
-  ref,
-  query,
-) async {
-  final repository = ref.watch(adminFoodSearchRepositoryProvider);
-  final langCode = ref.watch(nutritionLangCodeProvider);
-  final result = await repository.searchFoods(
-    query: query,
-    langCode: langCode,
-    page: 1,
-    pageSize: 20,
-  );
-  return result.items;
-});
+final adminFoodSearchProvider =
+    FutureProvider.family<List<FoodSearchItem>, String>((ref, query) async {
+      final repository = ref.watch(adminFoodSearchRepositoryProvider);
+      final langCode = ref.watch(nutritionLangCodeProvider);
+      final result = await repository.searchFoods(
+        query: query,
+        langCode: langCode,
+        page: 1,
+        pageSize: 20,
+      );
+      return result.items;
+    });
 
 final adminNutrientsProvider = FutureProvider<List<NutrientDefinition>>((ref) {
   return ref
