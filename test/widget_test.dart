@@ -11,6 +11,9 @@ import 'package:food_ledger_frontend/features/authentication/data/mock_auth_repo
 import 'package:food_ledger_frontend/features/authentication/domain/models/app_user.dart';
 import 'package:food_ledger_frontend/features/authentication/domain/repositories/auth_repository.dart';
 import 'package:food_ledger_frontend/features/authentication/presentation/providers/auth_providers.dart';
+import 'package:food_ledger_frontend/features/profile/data/mock_body_profile_repository.dart';
+import 'package:food_ledger_frontend/features/profile/domain/repositories/body_profile_repository.dart';
+import 'package:food_ledger_frontend/features/profile/presentation/providers/body_profile_providers.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_daily_record_repository.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_defined_code_repository.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_food_repository.dart';
@@ -46,6 +49,7 @@ void main() {
     AuthRepository? authRepository,
     DailyRecordRepository? dailyRecordRepository,
     DefinedCodeRepository? definedCodeRepository,
+    BodyProfileRepository? bodyProfileRepository,
     bool restoreSessionOnStart = false,
     bool settle = true,
   }) async {
@@ -75,6 +79,9 @@ void main() {
           ),
           definedCodeRepositoryProvider.overrideWithValue(
             definedCodeRepository ?? const MockDefinedCodeRepository(),
+          ),
+          bodyProfileRepositoryProvider.overrideWithValue(
+            bodyProfileRepository ?? MockBodyProfileRepository(),
           ),
           nutritionRepositoryProvider.overrideWithValue(
             MockNutritionRepository(resolvedDailyRecordRepository),
@@ -442,6 +449,28 @@ void main() {
 
     final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(materialApp.themeMode, ThemeMode.dark);
+  });
+
+  testWidgets('尚未建立身體資料時顯示 Hint 並可馬上建立', (tester) async {
+    await pumpApp(tester, surfaceSize: const Size(390, 844));
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('會員'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('尚未建立身體資料'), findsOneWidget);
+    expect(find.text('馬上建立'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('open-body-profile-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('建立身體資料'), findsOneWidget);
+    expect(find.text('維持目前熱量平衡。'), findsOneWidget);
+    expect(find.byKey(const Key('save-body-profile-button')), findsOneWidget);
   });
 
   testWidgets('會員可以登出並回到登入頁', (tester) async {
