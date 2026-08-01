@@ -28,6 +28,7 @@ void main() {
         food: mockFoods[1],
         quantityGrams: 150,
         consumedAt: consumedAt,
+        mealTypeCode: 'Lunch',
       );
       final records = await repository.getRecordsForDate(
         consumedAt,
@@ -47,6 +48,7 @@ void main() {
         food: mockFoods.first,
         quantityGrams: 100,
         consumedAt: consumedAt,
+        mealTypeCode: 'Lunch',
       );
 
       await repository.deleteRecord(created.id);
@@ -73,6 +75,7 @@ void main() {
         food: mockFoods[1],
         quantityGrams: 200,
         consumedAt: consumedAt,
+        mealTypeCode: 'Lunch',
       );
 
       final summary = await nutritionRepository.getDailySummary(

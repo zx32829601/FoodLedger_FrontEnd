@@ -6,11 +6,28 @@ import 'package:food_ledger_frontend/features/records/data/mock_foods.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_nutrition_repository.dart';
 import 'package:food_ledger_frontend/features/records/domain/models/daily_record.dart';
 import 'package:food_ledger_frontend/features/records/domain/models/food.dart';
-import 'package:food_ledger_frontend/features/records/domain/models/meal_type.dart';
+import 'package:food_ledger_frontend/features/records/domain/models/meal_type_option.dart';
+import 'package:food_ledger_frontend/features/records/domain/repositories/defined_code_repository.dart';
 import 'package:food_ledger_frontend/features/records/domain/repositories/food_repository.dart';
 import 'package:food_ledger_frontend/features/records/presentation/providers/record_providers.dart';
 
 void main() {
+  test('MealTypeOptionsProvider 使用後端 DefinedCode 選項', () async {
+    final container = ProviderContainer(
+      overrides: [
+        definedCodeRepositoryProvider.overrideWithValue(
+          _FakeDefinedCodeRepository(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final options = await container.read(mealTypeOptionsProvider.future);
+
+    expect(options.map((option) => option.code), ['Brunch', 'Dinner']);
+    expect(options.first.displayName, '早午餐');
+  });
+
   test('DailyRecordsController_AddRecord_UpdatesRecordsAndSummary', () async {
     final repository = MockDailyRecordRepository(initialRecords: []);
     final container = ProviderContainer(
@@ -30,14 +47,14 @@ void main() {
         .addRecord(
           food: mockFoods[1],
           quantityGrams: 100,
-          mealType: MealType.lunch,
+          mealTypeCode: 'Lunch',
           note: '公司午餐',
         );
     final records = await container.read(dailyRecordsProvider.future);
     final summary = await container.read(nutritionSummaryProvider.future);
 
     expect(records, hasLength(1));
-    expect(records.single.mealType, MealType.lunch);
+    expect(records.single.mealTypeCode, 'Lunch');
     expect(records.single.note, '公司午餐');
     expect(summary.nutrient('Calories')?.amount, closeTo(165, 0.001));
     expect(summary.nutrient('Protein')?.amount, closeTo(31, 0.001));
@@ -89,7 +106,7 @@ void main() {
           .addRecord(
             food: mockFoods[1],
             quantityGrams: 100,
-            mealType: MealType.lunch,
+            mealTypeCode: 'Lunch',
             recordDate: DateTime(2026, 7, 28),
           ),
       completes,
@@ -113,7 +130,7 @@ void main() {
         .addRecord(
           food: mockFoods[1],
           quantityGrams: 100,
-          mealType: MealType.lunch,
+          mealTypeCode: 'Lunch',
           recordDate: DateTime(2026, 7, 28),
         );
 
@@ -136,7 +153,7 @@ void main() {
           .addRecord(
             food: mockFoods[1],
             quantityGrams: 100,
-            mealType: MealType.lunch,
+            mealTypeCode: 'Lunch',
           ),
       throwsA(isA<Exception>()),
     );
@@ -155,6 +172,16 @@ void main() {
     controller.nextWeek();
     expect(container.read(selectedDateProvider), DateTime(2026, 7, 29));
   });
+}
+
+class _FakeDefinedCodeRepository implements DefinedCodeRepository {
+  @override
+  Future<List<MealTypeOption>> getMealTypes() async {
+    return const [
+      MealTypeOption(code: 'Brunch', displayName: '早午餐', sortOrder: 1),
+      MealTypeOption(code: 'Dinner', displayName: '晚餐', sortOrder: 2),
+    ];
+  }
 }
 
 class _FailingAddDailyRecordRepository extends MockDailyRecordRepository {

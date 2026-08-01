@@ -57,6 +57,7 @@ void main() {
       food: food,
       quantityGrams: 100,
       consumedAt: DateTime.utc(2026, 7, 28),
+      mealTypeCode: 'Lunch',
       nutrients: [protein],
     );
 

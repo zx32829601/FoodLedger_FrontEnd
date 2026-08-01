@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/theme_mode_controller.dart';
+import '../../../core/widgets/confirmation_dialog.dart';
 import '../../../core/widgets/feature_overview_page.dart';
 import '../../authentication/presentation/providers/auth_providers.dart';
 
@@ -36,8 +37,16 @@ class ProfilePage extends ConsumerWidget {
               subtitle: Text(user?.email ?? ''),
               trailing: OutlinedButton.icon(
                 key: const Key('logout-button'),
-                onPressed: () {
-                  ref.read(authenticationProvider.notifier).signOut();
+                onPressed: () async {
+                  final confirmed = await showConfirmationDialog(
+                    context,
+                    title: '登出',
+                    message: '確定要登出 FoodLedger 嗎？',
+                    confirmLabel: '登出',
+                  );
+                  if (!confirmed) return;
+                  if (!context.mounted) return;
+                  await ref.read(authenticationProvider.notifier).signOut();
                 },
                 icon: const Icon(Icons.logout),
                 label: const Text('登出'),

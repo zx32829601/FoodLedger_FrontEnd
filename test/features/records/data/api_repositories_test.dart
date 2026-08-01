@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:food_ledger_frontend/features/records/data/api_daily_record_repository.dart';
+import 'package:food_ledger_frontend/features/records/data/api_defined_code_repository.dart';
 import 'package:food_ledger_frontend/features/records/data/api_food_repository.dart';
 import 'package:food_ledger_frontend/features/records/data/api_nutrition_repository.dart';
 import 'package:food_ledger_frontend/features/records/domain/models/food.dart';
@@ -79,7 +80,7 @@ void main() {
               'displayName': 'Chicken',
               'langCode': 'en-US',
             },
-            'quantity': 120,
+            'quantityInGrams': 120,
             'consumedAt': '2026-07-28T04:00:00Z',
             'mealTypeCode': 'Lunch',
             'note': null,
@@ -141,8 +142,60 @@ void main() {
 
       expect(request.path, '/api/daily-records');
       expect(request.data['foodId'], 1);
+      expect(request.data['quantityInGrams'], 120);
+      expect(request.data.containsKey('quantity'), isFalse);
       expect(request.data['mealTypeCode'], 'Lunch');
       expect(request.data['consumedAt'], '2026-07-27T04:00:00.000Z');
+    });
+
+    test('更新紀錄只使用 quantityInGrams 契約', () async {
+      late RequestOptions request;
+      final dio = _dio((options) {
+        request = options;
+        return null;
+      });
+      addTearDown(dio.close);
+      final food = Food(
+        id: 1,
+        code: 'CHICKEN',
+        name: '雞胸肉',
+        description: '',
+        langCode: 'zh-TW',
+        nutrientsPer100Grams: const [],
+      );
+
+      await ApiDailyRecordRepository(dio).updateRecord(
+        recordId: 11,
+        food: food,
+        quantityGrams: 135,
+        consumedAt: DateTime.parse('2026-07-27T12:00:00+08:00'),
+        mealTypeCode: 'Lunch',
+      );
+
+      expect(request.path, '/api/daily-records/11');
+      expect(request.data['quantityInGrams'], 135);
+      expect(request.data.containsKey('quantity'), isFalse);
+    });
+  });
+
+  group('ApiDefinedCodeRepository', () {
+    test('餐別選項完整保留後端 DefinedCode 契約與排序', () async {
+      late RequestOptions request;
+      final dio = _dio((options) {
+        request = options;
+        return <Object?>[
+          {'code': 'Lunch', 'displayName': '午餐', 'sortOrder': 2},
+          {'code': 'Brunch', 'displayName': '早午餐', 'sortOrder': 1},
+        ];
+      });
+      addTearDown(dio.close);
+
+      final options = await ApiDefinedCodeRepository(dio).getMealTypes();
+
+      expect(request.path, '/api/defined-codes/meal-types');
+      expect(options.map((option) => option.code), ['Brunch', 'Lunch']);
+      expect(options.first.displayName, '早午餐');
+      expect(options.first.sortOrder, 1);
     });
   });
 

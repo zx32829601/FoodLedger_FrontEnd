@@ -4,14 +4,16 @@ import '../../../../core/localization/iana_local_date.dart';
 import '../../../../core/localization/localization_providers.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../data/api_daily_record_repository.dart';
+import '../../data/api_defined_code_repository.dart';
 import '../../data/api_food_repository.dart';
 import '../../data/api_nutrition_repository.dart';
 import '../../domain/models/daily_record.dart';
 import '../../domain/models/food.dart';
-import '../../domain/models/meal_type.dart';
+import '../../domain/models/meal_type_option.dart';
 import '../../domain/models/nutrition_summary.dart';
 import '../../domain/models/weekly_nutrition_summary.dart';
 import '../../domain/repositories/daily_record_repository.dart';
+import '../../domain/repositories/defined_code_repository.dart';
 import '../../domain/repositories/food_repository.dart';
 import '../../domain/repositories/nutrition_repository.dart';
 
@@ -23,8 +25,16 @@ final dailyRecordRepositoryProvider = Provider<DailyRecordRepository>((ref) {
   return ApiDailyRecordRepository(ref.watch(apiClientProvider).dio);
 });
 
+final definedCodeRepositoryProvider = Provider<DefinedCodeRepository>((ref) {
+  return ApiDefinedCodeRepository(ref.watch(apiClientProvider).dio);
+});
+
 final nutritionRepositoryProvider = Provider<NutritionRepository>((ref) {
   return ApiNutritionRepository(ref.watch(apiClientProvider).dio);
+});
+
+final mealTypeOptionsProvider = FutureProvider<List<MealTypeOption>>((ref) {
+  return ref.watch(definedCodeRepositoryProvider).getMealTypes();
 });
 
 typedef LocalizedDateQuery = ({
@@ -93,7 +103,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
   Future<void> addRecord({
     required Food food,
     required double quantityGrams,
-    required MealType mealType,
+    required String mealTypeCode,
     String? note,
     DateTime? recordDate,
   }) async {
@@ -106,7 +116,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
         : DateTime(recordDate.year, recordDate.month, recordDate.day);
     final localConsumedAt = localDateTimeInTimeZone(
       targetDate,
-      mealType.defaultHour,
+      12,
       selectedDateQuery.timeZone,
     );
 
@@ -118,7 +128,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
             food: food,
             quantityGrams: quantityGrams,
             consumedAt: localConsumedAt,
-            mealTypeCode: mealType.code,
+            mealTypeCode: mealTypeCode,
             note: note,
           );
     } on Object catch (error, stackTrace) {
@@ -155,7 +165,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
     required DailyRecord record,
     required Food food,
     required double quantityGrams,
-    required MealType mealType,
+    required String mealTypeCode,
     String? note,
   }) async {
     final selectedDate = ref.read(selectedDateProvider);
@@ -168,7 +178,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
             food: food,
             quantityGrams: quantityGrams,
             consumedAt: record.consumedAt,
-            mealTypeCode: mealType.code,
+            mealTypeCode: mealTypeCode,
             note: note,
           );
       return _loadRecords(

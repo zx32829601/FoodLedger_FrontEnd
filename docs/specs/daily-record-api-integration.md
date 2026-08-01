@@ -62,7 +62,7 @@ Flutter 飲食紀錄目前使用 Mock Repository。DailyRecord domain model 直�
 - 日期、時間與餐別是獨立欄位；改變任一欄位不得偷偷修改其他欄位。
 - 餐別不限制時段；前端可依時間提出預設建議，但使用者可自由修改。
 - 建議餐別 code 不在後端 options 時，選擇 sortOrder 第一筆，不建立本地假選項。
-- 第一版只輸入 quantityGrams，不支援其他份量單位。
+- 第一版 API request／response 只使用 `quantityInGrams`，不支援其他份量單位；前端 domain model 內部維持 `quantityGrams`。
 - RecordForm 共用食物、quantityGrams、consumedAt、mealTypeCode、note 與基本驗證。
 - AddRecordDialog 與 EditRecordDialog 分開，保留各自標題、初始化、成功訊息與 mutation 語意。
 - RecordForm 與 Dialog 不直接呼叫 Repository，提交事件交由 mutation controller。

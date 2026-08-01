@@ -48,7 +48,12 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: NutritionSummaryCard(summary: summary)),
+        home: Scaffold(
+          body: NutritionSummaryCard(
+            summary: summary,
+            mealTypeLabels: const {'Lunch': '午餐'},
+          ),
+        ),
       ),
     );
 

@@ -13,7 +13,7 @@ abstract interface class DailyRecordRepository {
     required Food food,
     required double quantityGrams,
     required DateTime consumedAt,
-    String mealTypeCode = 'Snack',
+    required String mealTypeCode,
     String? note,
   });
 

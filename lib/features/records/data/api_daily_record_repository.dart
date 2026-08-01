@@ -41,7 +41,7 @@ class ApiDailyRecordRepository implements DailyRecordRepository {
     required Food food,
     required double quantityGrams,
     required DateTime consumedAt,
-    String mealTypeCode = 'Snack',
+    required String mealTypeCode,
     String? note,
   }) async {
     try {
@@ -50,7 +50,7 @@ class ApiDailyRecordRepository implements DailyRecordRepository {
         options: await antiforgeryRequestOptions(_dio),
         data: {
           'foodId': food.id,
-          'quantity': quantityGrams,
+          'quantityInGrams': quantityGrams,
           'consumedAt': consumedAt.toUtc().toIso8601String(),
           'mealTypeCode': mealTypeCode,
           'note': note?.trim().isEmpty == true ? null : note?.trim(),
@@ -97,7 +97,7 @@ class ApiDailyRecordRepository implements DailyRecordRepository {
         options: await antiforgeryRequestOptions(_dio),
         data: {
           'foodId': food.id,
-          'quantity': quantityGrams,
+          'quantityInGrams': quantityGrams,
           'consumedAt': consumedAt.toUtc().toIso8601String(),
           'mealTypeCode': mealTypeCode,
           'note': note?.trim().isEmpty == true ? null : note?.trim(),
@@ -117,7 +117,7 @@ class ApiDailyRecordRepository implements DailyRecordRepository {
     final rawNutrients = json['nutrients'] is List
         ? json['nutrients']! as List
         : const [];
-    final quantity = (json['quantity'] as num).toDouble();
+    final quantity = (json['quantityInGrams'] as num).toDouble();
     final nutrients = [
       for (final item in rawNutrients)
         _mapNutrient(Map<String, Object?>.from(item! as Map)),
