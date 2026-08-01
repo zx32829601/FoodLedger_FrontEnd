@@ -103,6 +103,7 @@ class ApiNutritionRepository implements NutritionRepository {
       langCode: json['langCode'] as String?,
       amount: (json['amount'] as num).toDouble(),
       unitCode: json['unitCode']! as String,
+      displayOrder: (json['displayOrder'] as num?)?.toInt() ?? 1000,
     );
   }
 

@@ -121,6 +121,7 @@ class ApiAdminFoodRepository implements AdminFoodRepository {
       displayName: json['displayName']! as String,
       langCode: json['langCode'] as String?,
       unitCode: json['unitCode']! as String,
+      displayOrder: (json['displayOrder'] as num?)?.toInt() ?? 1000,
     );
   }
 

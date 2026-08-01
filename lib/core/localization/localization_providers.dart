@@ -11,6 +11,8 @@ class NutritionTimeZoneController extends Notifier<String> {
     final normalizedTimeZone = timeZone.trim();
     if (normalizedTimeZone.isNotEmpty) state = normalizedTimeZone;
   }
+
+  void reset() => state = defaultNutritionTimeZone;
 }
 
 final nutritionTimeZoneProvider =

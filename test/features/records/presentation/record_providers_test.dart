@@ -37,6 +37,7 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
+    container.read(selectedDateProvider.notifier).select(DateTime(2026, 7, 28));
 
     expect(await container.read(dailyRecordsProvider.future), isEmpty);
 
@@ -46,6 +47,7 @@ void main() {
           food: mockFoods[1],
           quantityGrams: 100,
           mealTypeCode: 'Lunch',
+          consumedAt: DateTime(2026, 7, 28, 12),
           note: '公司午餐',
         );
     final records = await container.read(dailyRecordsProvider.future);
@@ -72,7 +74,7 @@ void main() {
       addTearDown(container.dispose);
 
       await container.read(dailyRecordsProvider.future);
-      await container.read(foodSearchProvider('tofu').future);
+      await container.read(foodSearchProvider((query: 'tofu', page: 1)).future);
 
       container.read(nutritionLangCodeProvider.notifier).select('en-US');
       container
@@ -80,7 +82,7 @@ void main() {
           .select('America/New_York');
 
       await container.read(dailyRecordsProvider.future);
-      await container.read(foodSearchProvider('tofu').future);
+      await container.read(foodSearchProvider((query: 'tofu', page: 1)).future);
 
       expect(dailyRepository.lastTimeZone, 'America/New_York');
       expect(dailyRepository.lastLangCode, 'en-US');
@@ -105,7 +107,7 @@ void main() {
             food: mockFoods[1],
             quantityGrams: 100,
             mealTypeCode: 'Lunch',
-            recordDate: DateTime(2026, 7, 28),
+            consumedAt: DateTime(2026, 7, 28, 12),
           ),
       completes,
     );
@@ -113,26 +115,23 @@ void main() {
     expect(container.read(dailyRecordsProvider).hasError, isTrue);
   });
 
-  test('指定紀錄日期時會用 Nutrition IANA 時區建立飲食時間', () async {
+  test('新增時會原樣傳遞 consumedAt，不因餐別改寫時間', () async {
     final repository = _RecordingConsumedAtRepository();
     final container = ProviderContainer(
       overrides: [dailyRecordRepositoryProvider.overrideWithValue(repository)],
     );
     addTearDown(container.dispose);
-    container
-        .read(nutritionTimeZoneProvider.notifier)
-        .select('America/New_York');
-
+    final consumedAt = DateTime(2026, 7, 28, 23, 15);
     await container
         .read(dailyRecordsProvider.notifier)
         .addRecord(
           food: mockFoods[1],
           quantityGrams: 100,
           mealTypeCode: 'Lunch',
-          recordDate: DateTime(2026, 7, 28),
+          consumedAt: consumedAt,
         );
 
-    expect(repository.lastConsumedAt?.toUtc(), DateTime.utc(2026, 7, 28, 16));
+    expect(repository.lastConsumedAt, consumedAt);
   });
 
   test('新增 API 失敗會回傳操作錯誤', () async {
@@ -152,6 +151,7 @@ void main() {
             food: mockFoods[1],
             quantityGrams: 100,
             mealTypeCode: 'Lunch',
+            consumedAt: DateTime(2026, 7, 28, 12),
           ),
       throwsA(isA<Exception>()),
     );
@@ -263,11 +263,22 @@ class _RecordingFoodRepository implements FoodRepository {
   String? lastLangCode;
 
   @override
-  Future<List<Food>> searchFoods({
+  Future<FoodSearchResult> searchFoods({
     required String query,
     required String langCode,
+    required int page,
+    required int pageSize,
   }) async {
     lastLangCode = langCode;
-    return const [];
+    return FoodSearchResult(
+      items: const [],
+      page: page,
+      pageSize: pageSize,
+      totalCount: 0,
+    );
   }
+
+  @override
+  Future<Food> getFoodDetail({required int foodId, required String langCode}) =>
+      throw UnimplementedError();
 }

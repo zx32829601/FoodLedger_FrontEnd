@@ -15,13 +15,19 @@ DateTime localDateInTimeZone(DateTime instant, String timeZoneName) {
 }
 
 /// 在指定 IANA 時區建立某日的當地時間。
-DateTime localDateTimeInTimeZone(DateTime date, int hour, String timeZoneName) {
+DateTime localDateTimeInTimeZone(
+  DateTime date,
+  int hour,
+  String timeZoneName, {
+  int minute = 0,
+}) {
   return time_zone.TZDateTime(
     _location(timeZoneName),
     date.year,
     date.month,
     date.day,
     hour,
+    minute,
   );
 }
 

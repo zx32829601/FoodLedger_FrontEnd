@@ -12,10 +12,12 @@ void main() {
       final foods = await repository.searchFoods(
         query: '雞胸',
         langCode: 'zh-TW',
+        page: 1,
+        pageSize: 20,
       );
 
-      expect(foods, hasLength(1));
-      expect(foods.single.name, '雞胸肉');
+      expect(foods.items, hasLength(1));
+      expect(foods.items.single.name, '雞胸肉');
     });
   });
 
