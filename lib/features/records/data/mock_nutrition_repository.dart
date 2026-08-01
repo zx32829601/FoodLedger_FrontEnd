@@ -72,10 +72,14 @@ class MockNutritionRepository implements NutritionRepository {
         langCode: nutrient.langCode,
         amount: (existing?.amount ?? 0) + nutrient.amount,
         unitCode: nutrient.unitCode,
+        displayOrder: nutrient.displayOrder,
       );
     }
     final sortedTotals = totals.values.toList()
-      ..sort((left, right) => left.code.compareTo(right.code));
+      ..sort((left, right) {
+        final order = left.displayOrder.compareTo(right.displayOrder);
+        return order == 0 ? left.code.compareTo(right.code) : order;
+      });
     return sortedTotals;
   }
 }

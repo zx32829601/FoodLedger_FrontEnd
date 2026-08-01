@@ -6,11 +6,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:food_ledger_frontend/app/app.dart';
 import 'package:food_ledger_frontend/app/theme/theme_preference_store.dart';
 import 'package:food_ledger_frontend/core/api/api_exception.dart';
+import 'package:food_ledger_frontend/core/localization/localization_providers.dart';
 import 'package:food_ledger_frontend/core/widgets/app_brand_banner.dart';
 import 'package:food_ledger_frontend/features/authentication/data/mock_auth_repository.dart';
 import 'package:food_ledger_frontend/features/authentication/domain/models/app_user.dart';
 import 'package:food_ledger_frontend/features/authentication/domain/repositories/auth_repository.dart';
 import 'package:food_ledger_frontend/features/authentication/presentation/providers/auth_providers.dart';
+import 'package:food_ledger_frontend/features/profile/data/mock_body_profile_repository.dart';
+import 'package:food_ledger_frontend/features/profile/domain/repositories/body_profile_repository.dart';
+import 'package:food_ledger_frontend/features/profile/presentation/providers/body_profile_providers.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_daily_record_repository.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_defined_code_repository.dart';
 import 'package:food_ledger_frontend/features/records/data/mock_food_repository.dart';
@@ -46,6 +50,7 @@ void main() {
     AuthRepository? authRepository,
     DailyRecordRepository? dailyRecordRepository,
     DefinedCodeRepository? definedCodeRepository,
+    BodyProfileRepository? bodyProfileRepository,
     bool restoreSessionOnStart = false,
     bool settle = true,
   }) async {
@@ -76,6 +81,10 @@ void main() {
           definedCodeRepositoryProvider.overrideWithValue(
             definedCodeRepository ?? const MockDefinedCodeRepository(),
           ),
+          bodyProfileRepositoryProvider.overrideWithValue(
+            bodyProfileRepository ?? MockBodyProfileRepository(),
+          ),
+          deviceTimeZoneProvider.overrideWith((ref) async => 'Asia/Taipei'),
           nutritionRepositoryProvider.overrideWithValue(
             MockNutritionRepository(resolvedDailyRecordRepository),
           ),
@@ -88,6 +97,29 @@ void main() {
     } else {
       await tester.pump();
     }
+  }
+
+  Future<void> openBananaConfirmation(
+    WidgetTester tester, {
+    String? quantity,
+  }) async {
+    await tester.enterText(
+      find.byKey(const Key('food-search-page-field')),
+      '香蕉',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('food-search-item-6')));
+    await tester.pumpAndSettle();
+    if (quantity != null) {
+      await tester.enterText(
+        find.byKey(const Key('food-detail-quantity')),
+        quantity,
+      );
+      await tester.pump();
+    }
+    await tester.tap(find.byKey(const Key('food-detail-add-button')));
+    await tester.pumpAndSettle();
   }
 
   testWidgets('Web Session 還原完成前顯示載入畫面而非登入頁', (tester) async {
@@ -444,6 +476,28 @@ void main() {
     expect(materialApp.themeMode, ThemeMode.dark);
   });
 
+  testWidgets('尚未建立身體資料時顯示 Hint 並可馬上建立', (tester) async {
+    await pumpApp(tester, surfaceSize: const Size(390, 844));
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('會員'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('尚未建立身體資料'), findsOneWidget);
+    expect(find.text('馬上建立'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('open-body-profile-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('建立身體資料'), findsOneWidget);
+    expect(find.text('維持目前熱量平衡。'), findsOneWidget);
+    expect(find.byKey(const Key('save-body-profile-button')), findsOneWidget);
+  });
+
   testWidgets('會員可以登出並回到登入頁', (tester) async {
     await pumpApp(tester, surfaceSize: const Size(390, 844));
 
@@ -477,21 +531,18 @@ void main() {
     await tester.tap(find.byKey(const Key('home-add-record-button')));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('food-search-field')), '香蕉');
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('food-option-6')));
-    await tester.enterText(
-      find.byKey(const Key('record-quantity-field')),
-      '120',
-    );
+    await openBananaConfirmation(tester, quantity: '120');
     await tester.enterText(find.byKey(const Key('record-note-field')), '公司午餐');
     await tester.tap(find.byKey(const Key('save-record-button')));
     await tester.pumpAndSettle();
 
     expect(find.text('飲食紀錄已新增'), findsOneWidget);
-    expect(find.textContaining('818.3 kcal'), findsOneWidget);
-    expect(container.read(selectedDateProvider), DateTime(2025, 12, 15));
+    expect(find.text('繼續新增'), findsOneWidget);
+    expect(find.text('查看飲食紀錄'), findsOneWidget);
+    await tester.tap(find.text('查看飲食紀錄'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('818.3 kcal'), findsWidgets);
+    expect(container.read(selectedDateProvider), isNot(DateTime(2025, 12, 15)));
   });
 
   testWidgets('新增飲食紀錄使用後端 DefinedCode 餐別', (tester) async {
@@ -507,6 +558,10 @@ void main() {
     );
 
     await tester.tap(find.byKey(const Key('home-add-record-button')));
+    await tester.pumpAndSettle();
+    await openBananaConfirmation(tester);
+
+    await tester.tap(find.byKey(const Key('record-meal-type-field')));
     await tester.pumpAndSettle();
 
     expect(find.text('早午餐'), findsOneWidget);
@@ -551,10 +606,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('home-add-record-button')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('food-search-field')), '香蕉');
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('food-option-6')));
+    await openBananaConfirmation(tester);
     await tester.tap(find.byKey(const Key('save-record-button')));
     await tester.pumpAndSettle();
 

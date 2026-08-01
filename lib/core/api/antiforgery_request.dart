@@ -4,11 +4,17 @@ import 'package:flutter/foundation.dart';
 import 'api_exception.dart';
 
 /// 為 Flutter Web 的 Cookie mutation 取得最新 Antiforgery Token。
-Future<Options?> antiforgeryRequestOptions(Dio dio) async {
+Future<Options?> antiforgeryRequestOptions(
+  Dio dio, {
+  CancelToken? cancelToken,
+}) async {
   if (!kIsWeb) return null;
 
   try {
-    final response = await dio.get<Object?>('/api/auth/antiforgery');
+    final response = await dio.get<Object?>(
+      '/api/auth/antiforgery',
+      cancelToken: cancelToken,
+    );
     final data = response.data;
     if (data is! Map || data['requestToken'] is! String) {
       throw const ApiException(message: 'Antiforgery Token 回應格式不正確');

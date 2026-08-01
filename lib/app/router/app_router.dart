@@ -7,8 +7,10 @@ import '../../features/authentication/presentation/authentication_page.dart';
 import '../../features/authentication/presentation/providers/auth_providers.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
+import '../../features/profile/presentation/body_profile_page.dart';
 import '../../features/records/presentation/records_page.dart';
 import '../../features/records/presentation/food_search_page.dart';
+import '../../features/records/presentation/food_detail_page.dart';
 import '../shell/app_shell.dart';
 import 'app_routes.dart';
 
@@ -114,6 +116,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.foodSearch,
                 builder: (context, state) => const FoodSearchPage(),
+                routes: [
+                  GoRoute(
+                    path: ':foodId',
+                    builder: (context, state) => FoodDetailPage(
+                      foodId: int.parse(state.pathParameters['foodId']!),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -122,6 +132,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.profile,
                 builder: (context, state) => const ProfilePage(),
+                routes: [
+                  GoRoute(
+                    path: 'body-profile',
+                    builder: (context, state) => const BodyProfilePage(),
+                  ),
+                ],
               ),
             ],
           ),

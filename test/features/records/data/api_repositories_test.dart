@@ -8,7 +8,7 @@ import 'package:food_ledger_frontend/features/records/domain/models/food.dart';
 
 void main() {
   group('ApiFoodRepository', () {
-    test('搜尋結果會轉換動態營養素', () async {
+    test('搜尋結果會保留分頁、英文副標與熱量摘要', () async {
       late RequestOptions request;
       final dio = _dio((options) {
         request = options;
@@ -19,32 +19,67 @@ void main() {
               'foodCode': 'CHICKEN',
               'displayName': '雞胸肉',
               'langCode': 'zh-TW',
-              'nutrients': [
-                {
-                  'nutrientId': 2,
-                  'code': 'Protein',
-                  'displayName': '蛋白質',
-                  'langCode': 'zh-TW',
-                  'amountPer100Grams': 31,
-                  'unitCode': 'g',
-                },
-              ],
+              'englishName': 'Chicken Breast',
+              'caloriesPer100Grams': 165,
             },
           ],
+          'page': 2,
+          'pageSize': 20,
+          'totalCount': 43,
         };
       });
       addTearDown(dio.close);
 
-      final foods = await ApiFoodRepository(
+      final result = await ApiFoodRepository(
         dio,
-      ).searchFoods(query: '雞', langCode: 'zh-TW');
+      ).searchFoods(query: '雞', langCode: 'zh-TW', page: 2, pageSize: 20);
 
       expect(request.path, '/api/foods');
       expect(request.queryParameters['langCode'], 'zh-TW');
-      expect(foods.single.langCode, 'zh-TW');
-      expect(foods.single.nutrientPer100Grams('Protein')?.displayName, '蛋白質');
-      expect(foods.single.nutrientPer100Grams('Protein')?.amount, 31);
-      expect(foods.single.nutrientPer100Grams('Calories'), isNull);
+      expect(request.queryParameters['page'], 2);
+      expect(result.totalCount, 43);
+      expect(result.items.single.englishName, 'Chicken Breast');
+      expect(result.items.single.caloriesPer100Grams, 165);
+    });
+
+    test('食物明細會轉換分類與依序營養素', () async {
+      final dio = _dio(
+        (_) => {
+          'foodId': 1,
+          'foodCode': 'CHICKEN',
+          'displayName': '雞胸肉',
+          'langCode': 'zh-TW',
+          'englishName': 'Chicken Breast',
+          'description': '低脂蛋白質來源',
+          'categories': [
+            {
+              'categoryId': 7,
+              'code': 'MEAT',
+              'displayName': '肉類',
+              'langCode': 'zh-TW',
+            },
+          ],
+          'nutrients': [
+            {
+              'code': 'Protein',
+              'displayName': '蛋白質',
+              'langCode': 'zh-TW',
+              'displayOrder': 20,
+              'amountPer100Grams': 31,
+              'unitCode': 'g',
+            },
+          ],
+        },
+      );
+      addTearDown(dio.close);
+
+      final food = await ApiFoodRepository(
+        dio,
+      ).getFoodDetail(foodId: 1, langCode: 'zh-TW');
+
+      expect(food.englishName, 'Chicken Breast');
+      expect(food.categories.single.displayName, '肉類');
+      expect(food.nutrientPer100Grams('Protein')?.displayOrder, 20);
     });
 
     test('空白查詢仍會向 API 載入全部食物', () async {
@@ -57,11 +92,11 @@ void main() {
 
       final foods = await ApiFoodRepository(
         dio,
-      ).searchFoods(query: '   ', langCode: 'zh-TW');
+      ).searchFoods(query: '   ', langCode: 'zh-TW', page: 1, pageSize: 20);
 
       expect(request.path, '/api/foods');
       expect(request.queryParameters['query'], '');
-      expect(foods, isEmpty);
+      expect(foods.items, isEmpty);
     });
   });
 

@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/localization/iana_local_date.dart';
 import '../../../../core/localization/localization_providers.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../data/api_daily_record_repository.dart';
@@ -101,27 +100,18 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
     );
   }
 
-  /// 新增飲食紀錄；未指定 [recordDate] 時沿用飲食紀錄頁目前選取的日期。
+  /// 新增飲食紀錄；餐別與食用時間由表單各自決定，彼此不推導。
   Future<void> addRecord({
     required Food food,
     required double quantityGrams,
     required String mealTypeCode,
     String? note,
-    DateTime? recordDate,
+    required DateTime consumedAt,
   }) async {
     final selectedDate = ref.read(selectedDateProvider);
     final selectedDateQuery = ref.read(
       localizedDateQueryProvider(selectedDate),
     );
-    final targetDate = recordDate == null
-        ? selectedDate
-        : DateTime(recordDate.year, recordDate.month, recordDate.day);
-    final localConsumedAt = localDateTimeInTimeZone(
-      targetDate,
-      12,
-      selectedDateQuery.timeZone,
-    );
-
     state = const AsyncLoading();
     try {
       await ref
@@ -129,7 +119,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
           .addRecord(
             food: food,
             quantityGrams: quantityGrams,
-            consumedAt: localConsumedAt,
+            consumedAt: consumedAt,
             mealTypeCode: mealTypeCode,
             note: note,
           );
@@ -168,6 +158,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
     required Food food,
     required double quantityGrams,
     required String mealTypeCode,
+    required DateTime consumedAt,
     String? note,
   }) async {
     final selectedDate = ref.read(selectedDateProvider);
@@ -179,7 +170,7 @@ class DailyRecordsController extends AsyncNotifier<List<DailyRecord>> {
             recordId: record.id,
             food: food,
             quantityGrams: quantityGrams,
-            consumedAt: record.consumedAt,
+            consumedAt: consumedAt,
             mealTypeCode: mealTypeCode,
             note: note,
           );
@@ -240,14 +231,25 @@ final weeklyNutritionSummaryProvider = FutureProvider<WeeklyNutritionSummary>((
       );
 });
 
-final foodSearchProvider = FutureProvider.family<List<Food>, String>((
-  ref,
-  query,
-) {
+typedef FoodSearchQuery = ({String query, int page});
+
+final foodSearchProvider =
+    FutureProvider.family<FoodSearchResult, FoodSearchQuery>((ref, request) {
+      return ref
+          .watch(foodRepositoryProvider)
+          .searchFoods(
+            query: request.query,
+            langCode: ref.watch(nutritionLangCodeProvider),
+            page: request.page,
+            pageSize: 20,
+          );
+    });
+
+final foodDetailProvider = FutureProvider.family<Food, int>((ref, foodId) {
   return ref
       .watch(foodRepositoryProvider)
-      .searchFoods(
-        query: query,
+      .getFoodDetail(
+        foodId: foodId,
         langCode: ref.watch(nutritionLangCodeProvider),
       );
 });

@@ -21,17 +21,18 @@ final adminFoodSearchRepositoryProvider = Provider<FoodRepository>((ref) {
   return ApiFoodRepository(ref.watch(apiClientProvider).dio);
 });
 
-final adminFoodSearchProvider = FutureProvider.family<List<Food>, String>((
-  ref,
-  query,
-) {
-  return ref
-      .watch(adminFoodSearchRepositoryProvider)
-      .searchFoods(
+final adminFoodSearchProvider =
+    FutureProvider.family<List<FoodSearchItem>, String>((ref, query) async {
+      final repository = ref.watch(adminFoodSearchRepositoryProvider);
+      final langCode = ref.watch(nutritionLangCodeProvider);
+      final result = await repository.searchFoods(
         query: query,
-        langCode: ref.watch(nutritionLangCodeProvider),
+        langCode: langCode,
+        page: 1,
+        pageSize: 20,
       );
-});
+      return result.items;
+    });
 
 final adminNutrientsProvider = FutureProvider<List<NutrientDefinition>>((ref) {
   return ref
@@ -134,7 +135,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
     );
   }
 
-  Future<void> _openEditor({Food? food}) async {
+  Future<void> _openEditor({FoodSearchItem? food}) async {
     AdminFood? initial;
     if (food != null) {
       try {
@@ -157,7 +158,7 @@ class _AdminPageState extends ConsumerState<AdminPage> {
     }
   }
 
-  Future<void> _delete(Food food) async {
+  Future<void> _delete(FoodSearchItem food) async {
     final confirmed = await showConfirmationDialog(
       context,
       title: '刪除食物',

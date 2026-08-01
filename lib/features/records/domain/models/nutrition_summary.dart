@@ -6,6 +6,7 @@ class NutrientAmount {
     required this.amount,
     required this.unitCode,
     this.langCode,
+    this.displayOrder = 1000,
   });
 
   final int nutrientId;
@@ -14,6 +15,7 @@ class NutrientAmount {
   final String? langCode;
   final double amount;
   final String unitCode;
+  final int displayOrder;
 }
 
 extension NutrientAmountCollection on Iterable<NutrientAmount> {
@@ -36,6 +38,7 @@ extension NutrientAmountCollection on Iterable<NutrientAmount> {
           langCode: nutrient.langCode,
           amount: nutrient.amount * factor,
           unitCode: nutrient.unitCode,
+          displayOrder: nutrient.displayOrder,
         ),
     ];
   }

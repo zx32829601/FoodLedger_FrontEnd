@@ -6,6 +6,8 @@ abstract final class AppRoutes {
   static const home = '/home';
   static const records = '/records';
   static const foodSearch = '/foods';
+  static String foodDetail(int foodId) => '$foodSearch/$foodId';
   static const profile = '/profile';
+  static const bodyProfile = '/profile/body-profile';
   static const admin = '/admin';
 }

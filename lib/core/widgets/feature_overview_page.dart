@@ -77,11 +77,13 @@ class FeatureOverviewItem {
     required this.title,
     required this.description,
     required this.icon,
+    this.onTap,
   });
 
   final String title;
   final String description;
   final IconData icon;
+  final VoidCallback? onTap;
 }
 
 class _PageHeader extends StatelessWidget {
@@ -143,22 +145,33 @@ class _OverviewCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.large),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(item.icon, color: theme.colorScheme.secondary),
-            const SizedBox(height: AppSpacing.medium),
-            Text(
-              item.title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
+      child: InkWell(
+        borderRadius: AppRadius.mediumBorderRadius,
+        onTap: item.onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.large),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(item.icon, color: theme.colorScheme.secondary),
+              const SizedBox(height: AppSpacing.medium),
+              Text(
+                item.title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.small),
-            Text(item.description, style: theme.textTheme.bodyMedium),
-          ],
+              const SizedBox(height: AppSpacing.small),
+              Text(item.description, style: theme.textTheme.bodyMedium),
+              if (item.onTap != null) ...[
+                const SizedBox(height: AppSpacing.medium),
+                const Align(
+                  alignment: Alignment.centerRight,
+                  child: Icon(Icons.arrow_forward),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

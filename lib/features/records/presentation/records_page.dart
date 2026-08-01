@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../core/localization/iana_local_date.dart';
 import '../../../core/localization/localization_providers.dart';
@@ -42,7 +44,9 @@ class RecordsPage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _PageHeader(onAddRecord: () => _showAddRecordDialog(context)),
+                _PageHeader(
+                  onAddRecord: () => context.go(AppRoutes.foodSearch),
+                ),
                 const SizedBox(height: AppSpacing.large),
                 _DateSelector(selectedDate: selectedDate),
                 const SizedBox(height: AppSpacing.medium),
@@ -97,13 +101,6 @@ class RecordsPage extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Future<void> _showAddRecordDialog(BuildContext context) async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) => const AddRecordDialog(),
     );
   }
 }

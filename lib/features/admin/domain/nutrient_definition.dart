@@ -5,6 +5,7 @@ class NutrientDefinition {
     required this.displayName,
     required this.unitCode,
     this.langCode,
+    this.displayOrder = 1000,
   });
 
   final int nutrientId;
@@ -12,4 +13,5 @@ class NutrientDefinition {
   final String displayName;
   final String? langCode;
   final String unitCode;
+  final int displayOrder;
 }

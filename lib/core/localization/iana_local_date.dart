@@ -1,4 +1,4 @@
-import 'package:timezone/data/latest.dart' as time_zone_data;
+import 'package:timezone/data/latest_all.dart' as time_zone_data;
 import 'package:timezone/timezone.dart' as time_zone;
 
 bool _isTimeZoneDatabaseInitialized = false;
@@ -14,14 +14,33 @@ DateTime localDateInTimeZone(DateTime instant, String timeZoneName) {
   return DateTime(localDateTime.year, localDateTime.month, localDateTime.day);
 }
 
+/// 嘗試換算 IANA 當地日期；無效或未知時區時回傳 null。
+DateTime? tryLocalDateInTimeZone(DateTime instant, String timeZoneName) {
+  try {
+    return localDateInTimeZone(instant, timeZoneName);
+  } on time_zone.LocationNotFoundException {
+    return null;
+  }
+}
+
+/// 使用應用程式共用的 IANA 資料庫驗證時區識別碼。
+bool isKnownIanaTimeZone(String timeZoneName) =>
+    tryLocalDateInTimeZone(DateTime.now().toUtc(), timeZoneName) != null;
+
 /// 在指定 IANA 時區建立某日的當地時間。
-DateTime localDateTimeInTimeZone(DateTime date, int hour, String timeZoneName) {
+DateTime localDateTimeInTimeZone(
+  DateTime date,
+  int hour,
+  String timeZoneName, {
+  int minute = 0,
+}) {
   return time_zone.TZDateTime(
     _location(timeZoneName),
     date.year,
     date.month,
     date.day,
     hour,
+    minute,
   );
 }
 
@@ -46,5 +65,10 @@ time_zone.Location _location(String timeZoneName) {
     time_zone_data.initializeTimeZones();
     _isTimeZoneDatabaseInitialized = true;
   }
-  return time_zone.getLocation(timeZoneName);
+  final databaseName = switch (timeZoneName) {
+    'UTC' => 'Etc/UTC',
+    'GMT' => 'Etc/GMT',
+    _ => timeZoneName,
+  };
+  return time_zone.getLocation(databaseName);
 }
