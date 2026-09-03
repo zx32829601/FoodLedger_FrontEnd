@@ -99,27 +99,22 @@ void main() {
     }
   }
 
-  Future<void> openBananaConfirmation(
+  Future<void> selectBananaInAddRecordDialog(
     WidgetTester tester, {
     String? quantity,
   }) async {
-    await tester.enterText(
-      find.byKey(const Key('food-search-page-field')),
-      '香蕉',
-    );
+    await tester.enterText(find.byKey(const Key('food-search-field')), '香蕉');
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('food-search-item-6')));
+    await tester.tap(find.byKey(const Key('food-option-6')));
     await tester.pumpAndSettle();
     if (quantity != null) {
       await tester.enterText(
-        find.byKey(const Key('food-detail-quantity')),
+        find.byKey(const Key('record-quantity-field')),
         quantity,
       );
       await tester.pump();
     }
-    await tester.tap(find.byKey(const Key('food-detail-add-button')));
-    await tester.pumpAndSettle();
   }
 
   testWidgets('Web Session 還原完成前顯示載入畫面而非登入頁', (tester) async {
@@ -518,7 +513,7 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testWidgets('使用者可從首頁直接搜尋食物並新增今天的飲食紀錄', (tester) async {
+  testWidgets('首頁新增飲食會開啟視窗並可直接新增今天的紀錄', (tester) async {
     await pumpApp(tester, surfaceSize: const Size(390, 844));
     final container = ProviderScope.containerOf(
       tester.element(find.byKey(const Key('home-add-record-button'))),
@@ -531,7 +526,9 @@ void main() {
     await tester.tap(find.byKey(const Key('home-add-record-button')));
     await tester.pumpAndSettle();
 
-    await openBananaConfirmation(tester, quantity: '120');
+    expect(find.text('新增飲食紀錄'), findsOneWidget);
+    expect(find.byKey(const Key('food-search-field')), findsOneWidget);
+    await selectBananaInAddRecordDialog(tester, quantity: '120');
     await tester.enterText(find.byKey(const Key('record-note-field')), '公司午餐');
     await tester.tap(find.byKey(const Key('save-record-button')));
     await tester.pumpAndSettle();
@@ -543,6 +540,47 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('818.3 kcal'), findsWidgets);
     expect(container.read(selectedDateProvider), isNot(DateTime(2025, 12, 15)));
+  });
+
+  testWidgets('紀錄頁新增飲食會開啟視窗並沿用選取日期', (tester) async {
+    await pumpApp(tester, surfaceSize: const Size(390, 844));
+    final recordsDestination = find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('紀錄'),
+    );
+    await tester.tap(recordsDestination);
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byKey(const Key('add-record-button'))),
+    );
+    container
+        .read(selectedDateProvider.notifier)
+        .select(DateTime(2025, 12, 15));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('add-record-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('新增飲食紀錄'), findsOneWidget);
+    expect(find.byKey(const Key('food-search-field')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('record-date-field')),
+        matching: find.text('2025/12/15'),
+      ),
+      findsOneWidget,
+    );
+
+    await selectBananaInAddRecordDialog(tester, quantity: '120');
+    await tester.tap(find.byKey(const Key('save-record-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('飲食紀錄已新增'), findsOneWidget);
+
+    await tester.tap(find.text('查看飲食紀錄'));
+    await tester.pumpAndSettle();
+    final records = await container.read(dailyRecordsProvider.future);
+    expect(records.any((record) => record.food.name == '香蕉'), isTrue);
+    expect(container.read(selectedDateProvider), DateTime(2025, 12, 15));
   });
 
   testWidgets('新增飲食紀錄使用後端 DefinedCode 餐別', (tester) async {
@@ -559,12 +597,12 @@ void main() {
 
     await tester.tap(find.byKey(const Key('home-add-record-button')));
     await tester.pumpAndSettle();
-    await openBananaConfirmation(tester);
+    await selectBananaInAddRecordDialog(tester);
 
     await tester.tap(find.byKey(const Key('record-meal-type-field')));
     await tester.pumpAndSettle();
 
-    expect(find.text('早午餐'), findsOneWidget);
+    expect(find.text('早午餐'), findsWidgets);
     expect(find.text('早餐'), findsNothing);
   });
 
@@ -606,7 +644,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('home-add-record-button')));
     await tester.pumpAndSettle();
-    await openBananaConfirmation(tester);
+    await selectBananaInAddRecordDialog(tester);
     await tester.tap(find.byKey(const Key('save-record-button')));
     await tester.pumpAndSettle();
 
