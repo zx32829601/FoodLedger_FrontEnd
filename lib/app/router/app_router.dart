@@ -8,6 +8,7 @@ import '../../features/authentication/presentation/providers/auth_providers.dart
 import '../../features/home/presentation/home_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/profile/presentation/body_profile_page.dart';
+import '../../features/profile/presentation/body_measurements_page.dart';
 import '../../features/records/presentation/records_page.dart';
 import '../../features/records/presentation/food_search_page.dart';
 import '../../features/records/presentation/food_detail_page.dart';
@@ -136,6 +137,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'body-profile',
                     builder: (context, state) => const BodyProfilePage(),
+                  ),
+                  GoRoute(
+                    path: 'body-measurements',
+                    builder: (context, state) => const BodyMeasurementsPage(),
                   ),
                 ],
               ),

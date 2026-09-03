@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../records/domain/models/daily_record.dart';
 import '../../records/presentation/providers/record_providers.dart';
+import '../../records/presentation/widgets/add_record_dialog.dart';
 import '../../records/presentation/widgets/daily_record_bar.dart';
 import '../../records/presentation/widgets/nutrition_summary_card.dart';
 import 'providers/home_providers.dart';
@@ -61,9 +60,7 @@ class _HomePageState extends ConsumerState<HomePage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _HomeHeader(
-                  onAddRecord: () => context.go(AppRoutes.foodSearch),
-                ),
+                _HomeHeader(onAddRecord: () => _showAddRecordDialog(context)),
                 const SizedBox(height: AppSpacing.large),
                 summary.when(
                   data: (value) => NutritionSummaryCard(
@@ -99,6 +96,16 @@ class _HomePageState extends ConsumerState<HomePage>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _showAddRecordDialog(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AddRecordDialog(
+        recordDate: ref.read(homeTodayProvider),
+        onSaved: () => ref.invalidate(homeDailyRecordsProvider),
       ),
     );
   }

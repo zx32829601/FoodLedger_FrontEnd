@@ -125,6 +125,12 @@ class ProfilePage extends ConsumerWidget {
           icon: Icons.badge_outlined,
           onTap: () => context.push(AppRoutes.bodyProfile),
         ),
+        FeatureOverviewItem(
+          title: '身體量測紀錄',
+          description: '追蹤體重、體脂率與肌肉量的歷史變化。',
+          icon: Icons.monitor_weight_outlined,
+          onTap: () => context.push(AppRoutes.bodyMeasurements),
+        ),
         const FeatureOverviewItem(
           title: '營養目標',
           description: '設定每日熱量與主要營養素目標。',
