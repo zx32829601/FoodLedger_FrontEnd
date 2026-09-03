@@ -9,5 +9,6 @@ abstract final class AppRoutes {
   static String foodDetail(int foodId) => '$foodSearch/$foodId';
   static const profile = '/profile';
   static const bodyProfile = '/profile/body-profile';
+  static const bodyMeasurements = '/profile/body-measurements';
   static const admin = '/admin';
 }
